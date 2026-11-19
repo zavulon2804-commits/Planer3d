@@ -1,7 +1,7 @@
 (function (root) {
   const lineNames = { pipeCold: 'Труба ХВС', pipeHot: 'Труба ГВС', drain: 'Канализация', cable: 'Электрокабель' };
   const lineColors = { pipeCold: '#2185c5', pipeHot: '#d64b43', drain: '#886744', cable: '#d5a000' };
-  const itemTypes = new Set(['room', 'wall', 'dimension', 'door', 'window', 'sofa', 'table', 'bed', 'bath', 'socket', 'light', ...Object.keys(lineNames)]);
+  const itemTypes = new Set(['room', 'wall', 'dimension', 'background', 'door', 'window', 'sofa', 'table', 'bed', 'bath', 'socket', 'light', ...Object.keys(lineNames)]);
   function isLine(type) { return type === 'wall' || type === 'dimension' || Object.hasOwn(lineNames, type); }
   function snap(value, centimetres, scale) {
     const step = centimetres * scale / 100;
@@ -17,8 +17,9 @@
   }
   const clone = value => JSON.parse(JSON.stringify(value));
   function validItems(items) {
-    return Array.isArray(items) && items.every(item => {
+    return Array.isArray(items) && items.filter(item => item && item.type === 'background').length <= 1 && items.every(item => {
       if (!item || !itemTypes.has(item.type) || !Number.isFinite(item.x) || !Number.isFinite(item.y)) return false;
+      if (item.type === 'background') return typeof item.src === 'string' && item.src.length <= 450000 && /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(item.src) && Number.isFinite(item.w) && item.w > 0 && Number.isFinite(item.h) && item.h > 0 && Number.isFinite(item.opacity) && item.opacity >= 0 && item.opacity <= 1 && typeof item.visible === 'boolean';
       if (item.type === 'room' || isLine(item.type)) {
         return Number.isFinite(item.x2) && Number.isFinite(item.y2) && (isLine(item.type) ? item.x !== item.x2 || item.y !== item.y2 : item.x !== item.x2 && item.y !== item.y2);
       }
