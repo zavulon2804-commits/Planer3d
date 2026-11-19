@@ -4,6 +4,14 @@
   const lineColors = { pipeCold: '#2185c5', pipeHot: '#d64b43', drain: '#886744', cable: '#d5a000' };
   const itemTypes = new Set(['room', 'wall', 'dimension', 'background', 'door', 'window', 'sofa', 'table', 'bed', 'bath', 'socket', 'light', ...Object.keys(lineNames), ...catalog.items.map(item => item.type)]);
   function isLine(type) { return type === 'wall' || type === 'dimension' || Object.hasOwn(lineNames, type); }
+  function normalizeRotation(angle) { return ((angle % 360) + 360) % 360; }
+  function containsObject(item, point, scale, tolerance = 0) {
+    if (!item || !point || ![item.x, item.y, item.w, item.h, point.x, point.y, scale, tolerance].every(Number.isFinite) || item.w <= 0 || item.h <= 0 || scale <= 0) return false;
+    const centerX = item.x + item.w * scale / 2, centerY = item.y + item.h * scale / 2;
+    const dx = point.x - centerX, dy = point.y - centerY, angle = (item.rotation || 0) * Math.PI / 180;
+    const cos = Math.cos(angle), sin = Math.sin(angle);
+    return Math.abs(dx * cos + dy * sin) <= item.w * scale / 2 + tolerance && Math.abs(-dx * sin + dy * cos) <= item.h * scale / 2 + tolerance;
+  }
   function snap(value, centimetres, scale) {
     const step = centimetres * scale / 100;
     if (!Number.isFinite(value) || !Number.isFinite(step) || step <= 0) return value;
@@ -47,6 +55,7 @@
   function validItems(items) {
     return Array.isArray(items) && items.filter(item => item && item.type === 'background').length <= 1 && items.every(item => {
       if (!item || !itemTypes.has(item.type) || !Number.isFinite(item.x) || !Number.isFinite(item.y)) return false;
+      if (item.rotation !== undefined && !Number.isFinite(item.rotation)) return false;
       if (item.materialColor !== undefined && (typeof item.materialColor !== 'string' || !/^#[0-9a-f]{6}$/i.test(item.materialColor))) return false;
       if (item.type === 'background') return typeof item.src === 'string' && item.src.length <= 450000 && /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(item.src) && Number.isFinite(item.w) && item.w > 0 && Number.isFinite(item.h) && item.h > 0 && Number.isFinite(item.opacity) && item.opacity >= 0 && item.opacity <= 1 && typeof item.visible === 'boolean';
       if (item.type === 'room' || isLine(item.type)) {
@@ -99,7 +108,7 @@
     floor.variants.push({ name, items: copyCurrent ? clone(project.items) : [] });
     selectVariant(project, floor.variants.length - 1);
   }
-  root.PlannerProject = { valid, ensure, sync, selectFloor, selectVariant, addFloor, addVariant, lineNames, lineColors, isLine, engineeringLengths, snap, calibrateBackground, setWallEndpoints };
+  root.PlannerProject = { valid, ensure, sync, selectFloor, selectVariant, addFloor, addVariant, lineNames, lineColors, isLine, engineeringLengths, snap, calibrateBackground, setWallEndpoints, normalizeRotation, containsObject };
   if (typeof module !== 'undefined') module.exports = root.PlannerProject;
 })(typeof window !== 'undefined' ? window : globalThis);
 
