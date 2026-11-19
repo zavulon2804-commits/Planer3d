@@ -33,3 +33,10 @@ test('separates water and wiring tools and visibility', () => {
   assert.equal(layers.toolAvailable('wiring', 'drain'), false);
 });
 
+test('shows drawing dimensions and their tool on every sheet', () => {
+  for (const sheet of layers.sheets) {
+    assert.equal(layers.visible(sheet.id, 'dimension'), true);
+    assert.equal(layers.toolAvailable(sheet.id, 'dimension'), true);
+  }
+});
+
