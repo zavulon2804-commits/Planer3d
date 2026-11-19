@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
-const { findRooms, placeOnWall, findOpeningWall, updateOpening } = require('../geometry.js');
+const { findRooms, placeOnWall, findOpeningWall, updateOpening, wallSurface } = require('../geometry.js');
 
 const wall = (x, y, x2, y2) => ({ type: 'wall', x, y, x2, y2 });
 
@@ -48,5 +48,20 @@ test('updates a bound opening when its wall rotates', () => {
   assert.equal(opening.angle, Math.PI / 2);
   assert.equal(opening.x, -20);
   assert.equal(opening.y, 77);
+});
+
+test('subtracts door and window areas from a single wall face', () => {
+  const walls = [{ ...wall(0, 0, 160, 0), id: 'wall-1' }, { type: 'door', wallId: 'wall-1', offset: 0.25, w: 1, openingHeight: 2, sillHeight: 0 }, { type: 'window', wallId: 'wall-1', offset: 0.75, w: 1, openingHeight: 1, sillHeight: 1 }];
+  assert.equal(wallSurface(walls, 3, 40), 9);
+});
+
+test('subtracts overlapping openings only once and clips at ceiling', () => {
+  const walls = [{ ...wall(0, 0, 160, 0), id: 'wall-1' }, { type: 'door', wallId: 'wall-1', offset: 0.5, w: 2, openingHeight: 3, sillHeight: 0 }, { type: 'door', wallId: 'wall-1', offset: 0.5, w: 2, openingHeight: 3, sillHeight: 0 }];
+  assert.equal(wallSurface(walls, 2.5, 40), 5);
+});
+
+test('ignores unbound openings and clips openings to the wall', () => {
+  const walls = [{ ...wall(0, 0, 160, 0), id: 'wall-1' }, { type: 'door', wallId: 'other', offset: 0.5, w: 1 }, { type: 'window', wallId: 'wall-1', offset: 0, w: 2, openingHeight: 1, sillHeight: 1 }];
+  assert.equal(wallSurface(walls, 3, 40), 11);
 });
 
