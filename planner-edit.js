@@ -62,6 +62,12 @@
     x.value = (box.left / scale).toFixed(2); y.value = (box.top / scale).toFixed(2); w.value = width.toFixed(2); h.value = height.toFixed(2);
     if (item.wallId) {
       x.disabled = true; y.disabled = true;
+      const vertical = PlannerGeometry.openingVertical(item);
+      const fields = document.createElement('div');
+      fields.innerHTML = '<label for="openingHeight">Высота проёма, м</label><input id="openingHeight" type="number" min="0.01" step="0.1"><label for="sillHeight">Высота от пола, м</label><input id="sillHeight" type="number" min="0" step="0.1">';
+      panel.insertBefore(fields, document.querySelector('#applyObject'));
+      document.querySelector('#openingHeight').value = vertical.height;
+      document.querySelector('#sillHeight').value = vertical.sill;
       const note = document.createElement('p');
       note.className = 'small';
       note.textContent = 'Проём привязан к стене. Перетащите его вдоль стены.';
@@ -73,8 +79,14 @@
       const current = project();
       const object = current.items[index];
       if (object.wallId) {
+        const openingHeightInput = document.querySelector('#openingHeight');
+        const sillHeightInput = document.querySelector('#sillHeight');
+        const openingHeight = Number(openingHeightInput.value), sillHeight = Number(sillHeightInput.value);
+        if (!openingHeightInput.value || !sillHeightInput.value || !Number.isFinite(openingHeight) || openingHeight <= 0 || !Number.isFinite(sillHeight) || sillHeight < 0) { alert('Введите корректную высоту проёма и высоту от пола.'); return; }
         const wall = current.items.find(candidate => candidate.type === 'wall' && candidate.id === object.wallId);
         if (!wall || Math.hypot(wall.x2 - wall.x, wall.y2 - wall.y) < values[2] * scale) { alert('Ширина проёма превышает длину стены.'); return; }
+        object.openingHeight = openingHeight;
+        object.sillHeight = sillHeight;
       }
       if (object.type === 'wall' && object.id) {
         const newLength = Math.hypot(values[2], values[3]);
