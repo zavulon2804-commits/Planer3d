@@ -25,3 +25,11 @@ test('exposes only relevant editing tools while retaining selection', () => {
   assert.equal(layers.toolAvailable('invalid', 'wall'), false);
 });
 
+test('separates water and wiring tools and visibility', () => {
+  assert.equal(layers.toolAvailable('water', 'pipeCold'), true);
+  assert.equal(layers.visible('water', 'pipeHot'), true);
+  assert.equal(layers.visible('water', 'cable'), false);
+  assert.equal(layers.visible('wiring', 'cable'), true);
+  assert.equal(layers.toolAvailable('wiring', 'drain'), false);
+});
+
