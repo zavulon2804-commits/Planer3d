@@ -61,6 +61,12 @@
     panel.innerHTML = `<p><strong>${labels[item.type] || 'Объект'}</strong></p><label for="objectX">X, м</label><input id="objectX" type="number" step="0.1"><label for="objectY">Y, м</label><input id="objectY" type="number" step="0.1"><label for="objectWidth">${dimensionLabel}</label><input id="objectWidth" type="number" step="0.1" min="0"><label for="objectHeight">${heightLabel}</label><input id="objectHeight" type="number" step="0.1" min="0"><button class="wide primary" id="applyObject">Применить размеры</button><button class="wide" id="duplicateObject">Дублировать</button><p class="small">${item.type === 'wall' ? 'Перетащите стену или маркер её конца. Общие концы соседних стен переместятся вместе.' : 'Для перемещения перетащите объект на плане.'}</p>`;
     const x = document.querySelector('#objectX'), y = document.querySelector('#objectY'), w = document.querySelector('#objectWidth'), h = document.querySelector('#objectHeight');
     x.value = (box.left / scale).toFixed(2); y.value = (box.top / scale).toFixed(2); w.value = width.toFixed(2); h.value = height.toFixed(2);
+    if (['wall', 'room', 'sofa', 'table', 'bed', 'bath', 'socket', 'light'].includes(item.type)) {
+      const material = document.createElement('div');
+      material.innerHTML = '<label for="materialColor">Цвет материала в 3D</label><input id="materialColor" type="color">';
+      panel.insertBefore(material, document.querySelector('#applyObject'));
+      document.querySelector('#materialColor').value = item.materialColor || (item.type === 'wall' ? '#f9f7f1' : item.type === 'room' ? '#e1e7e1' : '#a8c5bd');
+    }
     if (item.wallId) {
       x.disabled = true; y.disabled = true;
       const vertical = PlannerGeometry.openingVertical(item);
@@ -79,6 +85,8 @@
       if (values.some(value => !Number.isFinite(value)) || values[2] < 0 || values[3] < 0 || (values[2] === 0 && values[3] === 0) || (!PlannerProject.isLine(item.type) && (!values[2] || !values[3]))) { alert('Введите корректные размеры.'); return; }
       const current = project();
       const object = current.items[index];
+      const materialColor = document.querySelector('#materialColor');
+      if (materialColor) object.materialColor = materialColor.value;
       if (object.wallId) {
         const openingHeightInput = document.querySelector('#openingHeight');
         const sillHeightInput = document.querySelector('#sillHeight');
@@ -163,6 +171,7 @@
     }
     saveProject(data, selection);
   });
+  window.PlannerEdit = { showProperties };
 })();
 
 
