@@ -1,6 +1,7 @@
 (function (root) {
   const cache = new Map();
   const scale = 40;
+  let calibration = null;
   function draw(context, items) {
     const background = items.find(item => item.type === 'background' && item.visible);
     if (!background) return;
@@ -16,15 +17,28 @@
     context.save(); context.globalAlpha = background.opacity;
     context.drawImage(image, background.x, background.y, background.w * scale, background.h * scale);
     context.restore();
+    if (calibration?.first) {
+      context.save(); context.strokeStyle = '#d33d35'; context.lineWidth = 2;
+      context.beginPath(); context.arc(calibration.first.x, calibration.first.y, 6, 0, Math.PI * 2); context.stroke(); context.restore();
+    }
   }
   function init() {
     const section = document.createElement('section');
-    section.innerHTML = '<div class="divider"></div><h2>Подложка</h2><label for="backgroundFile">Загрузить план</label><input id="backgroundFile" type="file" accept="image/png,image/jpeg,image/webp"><p class="small">Изображение хранится внутри проекта и сжимается для локального сохранения.</p><div id="backgroundControls" hidden><label for="backgroundX">X, м</label><input id="backgroundX" type="number" step="0.1"><label for="backgroundY">Y, м</label><input id="backgroundY" type="number" step="0.1"><label for="backgroundWidth">Ширина, м</label><input id="backgroundWidth" type="number" min="0.01" step="0.1"><label for="backgroundHeight">Высота, м</label><input id="backgroundHeight" type="number" min="0.01" step="0.1"><label for="backgroundOpacity">Непрозрачность, %</label><input id="backgroundOpacity" type="number" min="0" max="100" step="5"><label><input id="backgroundVisible" type="checkbox"> Показывать подложку</label><button class="wide" id="backgroundApply">Применить подложку</button><button class="wide" id="backgroundRemove">Удалить подложку</button></div><p id="backgroundStatus" class="small" role="status"></p>';
+    section.innerHTML = '<div class="divider"></div><h2>Подложка</h2><label for="backgroundFile">Загрузить план</label><input id="backgroundFile" type="file" accept="image/png,image/jpeg,image/webp"><p class="small">Изображение хранится внутри проекта и сжимается для локального сохранения.</p><div id="backgroundControls" hidden><label for="backgroundX">X, м</label><input id="backgroundX" type="number" step="0.1"><label for="backgroundY">Y, м</label><input id="backgroundY" type="number" step="0.1"><label for="backgroundWidth">Ширина, м</label><input id="backgroundWidth" type="number" min="0.01" step="0.1"><label for="backgroundHeight">Высота, м</label><input id="backgroundHeight" type="number" min="0.01" step="0.1"><label for="backgroundOpacity">Непрозрачность, %</label><input id="backgroundOpacity" type="number" min="0" max="100" step="5"><label><input id="backgroundVisible" type="checkbox"> Показывать подложку</label><button class="wide" id="backgroundApply">Применить подложку</button><label for="backgroundCalibrationLength">Известное расстояние, м</label><input id="backgroundCalibrationLength" type="number" min="0.001" step="0.1" value="1"><button class="wide" id="backgroundCalibrate">Указать две точки</button><button class="wide" id="backgroundCancel" hidden>Отменить калибровку</button><button class="wide" id="backgroundRemove">Удалить подложку</button></div><p id="backgroundStatus" class="small" role="status"></p>';
     document.querySelector('#tools').after(section);
     const control = id => document.getElementById(id);
     const fields = ['backgroundX', 'backgroundY', 'backgroundWidth', 'backgroundHeight', 'backgroundOpacity'];
+    const canvas = document.querySelector('#canvas');
+    function cancel(message) {
+      calibration = null;
+      control('backgroundCancel').hidden = true;
+      if (message) control('backgroundStatus').textContent = message;
+      root.PlannerCore.redraw();
+    }
     function render() {
-      const background = root.PlannerCore.getProject().items.find(item => item.type === 'background');
+      const project = root.PlannerCore.getProject();
+      const background = project.items.find(item => item.type === 'background');
+      if (calibration && (!background || !background.visible || project.activeFloor !== calibration.floor || project.floors[project.activeFloor].activeVariant !== calibration.variant || !document.querySelector('#view2').classList.contains('active'))) cancel('Калибровка отменена.');
       control('backgroundControls').hidden = !background;
       if (!background) return;
       const values = [background.x / scale, background.y / scale, background.w, background.h, background.opacity * 100];
@@ -47,6 +61,35 @@
       changeBackground((background, project) => { project.items = project.items.filter(item => item !== background); });
       control('backgroundStatus').textContent = 'Подложка удалена; действие можно отменить.';
     });
+    control('backgroundCalibrate').addEventListener('click', () => {
+      const project = root.PlannerCore.getProject(), background = project.items.find(item => item.type === 'background');
+      const lengthInput = control('backgroundCalibrationLength'), length = Number(lengthInput.value);
+      if (!background?.visible || !document.querySelector('#view2').classList.contains('active')) { control('backgroundStatus').textContent = 'Включите подложку и откройте план 2D.'; return; }
+      if (!lengthInput.value || !Number.isFinite(length) || length <= 0) { control('backgroundStatus').textContent = 'Введите положительное расстояние в метрах.'; return; }
+      calibration = { floor: project.activeFloor, variant: project.floors[project.activeFloor].activeVariant, metres: length, first: null };
+      control('backgroundCancel').hidden = false;
+      control('backgroundStatus').textContent = 'Нажмите первую точку известного расстояния на плане.';
+    });
+    control('backgroundCancel').addEventListener('click', () => cancel('Калибровка отменена.'));
+    canvas.addEventListener('pointerdown', event => {
+      if (!calibration || event.button !== 0) return;
+      event.preventDefault(); event.stopImmediatePropagation();
+      const point = root.PlannerCore.toWorldExact(event);
+      if (!calibration.first) {
+        calibration.first = point;
+        control('backgroundStatus').textContent = 'Нажмите вторую точку известного расстояния.';
+        root.PlannerCore.redraw();
+        return;
+      }
+      const project = root.PlannerCore.getProject(), background = project.items.find(item => item.type === 'background');
+      const result = PlannerProject.calibrateBackground(background, calibration.first, point, calibration.metres, scale);
+      if (!result) { control('backgroundStatus').textContent = 'Точки слишком близки или расстояние некорректно. Укажите вторую точку ещё раз.'; return; }
+      calibration = null; control('backgroundCancel').hidden = true;
+      changeBackground(item => Object.assign(item, result));
+      control('backgroundStatus').textContent = 'Масштаб подложки настроен. Действие можно отменить.';
+    }, true);
+    canvas.addEventListener('pointerup', event => { if (calibration) event.stopImmediatePropagation(); }, true);
+    root.addEventListener('keydown', event => { if (calibration && event.key === 'Escape') cancel('Калибровка отменена.'); });
     control('backgroundFile').addEventListener('change', event => {
       const file = event.target.files[0]; event.target.value = '';
       if (!file) return;
