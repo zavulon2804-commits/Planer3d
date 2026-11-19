@@ -42,6 +42,7 @@
   document.querySelector('#clear').addEventListener('click', () => setTimeout(updateEstimate, 0));
   document.querySelector('#file').addEventListener('change', () => setTimeout(updateEstimate, 100));
   window.addEventListener('keydown', event => { if (event.key === 'Delete') setTimeout(updateEstimate, 0); });
+  window.addEventListener('plannerchange', updateEstimate);
   document.querySelector('#estimateDownload').addEventListener('click', () => {
     const result = calculate();
     const rows = [['Позиция', 'Объём', 'Единица', 'Цена за единицу, ₽', 'Стоимость, ₽'], ['Пол', result.floorArea.toFixed(2), 'м²', settings.floorRate, result.floorCost.toFixed(2)], ['Стены без вычета проёмов', result.wallArea.toFixed(2), 'м²', settings.wallRate, result.wallCost.toFixed(2)], ['Итого', '', '', '', (result.floorCost + result.wallCost).toFixed(2)]];
