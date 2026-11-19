@@ -1,4 +1,5 @@
 (function (root) {
+  const catalog = root.PlannerCatalog || (typeof require === 'function' ? require('./catalog.js') : null);
   const scale = 40;
   const heights = { sofa: 0.8, table: 0.75, bed: 0.55, bath: 0.6, socket: 0.25, light: 0.2, door: 2.1, window: 1.5 };
   function color(value, fallback) { return typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value) ? value : fallback; }
@@ -31,7 +32,7 @@
       if (['room', 'wall', 'background'].includes(item.type) || item.wallId) continue;
       const width = item.w * scale, depth = item.h * scale;
       if (!(width > 0 && depth > 0)) continue;
-      const height = (heights[item.type] || 0.75) * scale;
+      const height = (catalog.get(item.type)?.height || heights[item.type] || 0.75) * scale;
       const bottom = item.type === 'light' ? Math.max(0, wallHeight * scale - height) : 0;
       const x = item.x, y = item.y, z = bottom, top = bottom + height;
       const a = { x, y, z }, b = { x: x + width, y, z }, c = { x: x + width, y: y + depth, z }, d = { x, y: y + depth, z };
