@@ -1,7 +1,7 @@
 const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
-const files = new Set(['index.html', 'geometry.js', 'planner-edit.js', 'planner-extra.js']);
+const files = new Set(['index.html', 'geometry.js', 'project-model.js', 'planner-edit.js', 'planner-extra.js', 'planner-floors.js']);
 http.createServer((request, response) => {
   let name;
   try { name = request.url === '/' ? 'index.html' : decodeURIComponent(request.url.split('?')[0].slice(1)); }
