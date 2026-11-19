@@ -77,7 +77,39 @@
     }
     return rooms;
   }
-  root.PlannerGeometry = { findRooms };
+  function placeOnWall(wall, position, width, height, maxDistance = Infinity) {
+    const dx = wall.x2 - wall.x, dy = wall.y2 - wall.y;
+    const length = Math.hypot(dx, dy);
+    if (!Number.isFinite(length) || length < width || width <= 0 || height <= 0) return null;
+    const projected = ((position.x - wall.x) * dx + (position.y - wall.y) * dy) / (length * length);
+    const closest = Math.max(0, Math.min(1, projected));
+    const distance = Math.hypot(position.x - (wall.x + closest * dx), position.y - (wall.y + closest * dy));
+    if (distance > maxDistance) return null;
+    const margin = width / (2 * length);
+    const offset = Math.max(margin, Math.min(1 - margin, projected));
+    return { offset, angle: Math.atan2(dy, dx), x: wall.x + offset * dx - width / 2, y: wall.y + offset * dy - height / 2, distance };
+  }
+
+  function findOpeningWall(items, position, width, height, maxDistance) {
+    let best = null;
+    for (const wall of items) {
+      if (wall.type !== 'wall') continue;
+      const placed = placeOnWall(wall, position, width, height, maxDistance);
+      if (placed && (!best || placed.distance < best.placed.distance)) best = { wall, placed };
+    }
+    return best;
+  }
+
+  function updateOpening(opening, wall, scale) {
+    const width = opening.w * scale, height = opening.h * scale;
+    const position = { x: wall.x + opening.offset * (wall.x2 - wall.x), y: wall.y + opening.offset * (wall.y2 - wall.y) };
+    const placed = placeOnWall(wall, position, width, height);
+    if (!placed) return false;
+    Object.assign(opening, { x: placed.x, y: placed.y, offset: placed.offset, angle: placed.angle });
+    return true;
+  }
+
+  root.PlannerGeometry = { findRooms, placeOnWall, findOpeningWall, updateOpening };
   if (typeof module !== 'undefined') module.exports = root.PlannerGeometry;
 })(typeof window !== 'undefined' ? window : globalThis);
 
