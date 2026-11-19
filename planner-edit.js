@@ -12,8 +12,7 @@
   }
 
   function point(event) {
-    const bounds = canvas.getBoundingClientRect();
-    return { x: Math.round((event.clientX - bounds.left) / step) * step, y: Math.round((event.clientY - bounds.top) / step) * step };
+    return window.PlannerCore.toWorld(event);
   }
 
   function bounds(item) {
@@ -34,7 +33,7 @@
   }
 
   function editing() {
-    return document.querySelector('[data-tool="select"]').classList.contains('active') && document.querySelector('#view2').classList.contains('active');
+    return !window.PlannerCore.isPanning() && document.querySelector('[data-tool="select"]').classList.contains('active') && document.querySelector('#view2').classList.contains('active');
   }
 
   function saveProject(data, index) {
@@ -78,7 +77,7 @@
   }
 
   canvas.addEventListener('pointerdown', event => {
-    if (!editing()) return;
+    if (!editing() || event.button !== 0) return;
     const data = project();
     if (!data?.items) return;
     const position = point(event);
