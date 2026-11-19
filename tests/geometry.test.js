@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
-const { findRooms } = require('../geometry.js');
+const { findRooms, placeOnWall, findOpeningWall, updateOpening } = require('../geometry.js');
 
 const wall = (x, y, x2, y2) => ({ type: 'wall', x, y, x2, y2 });
 
@@ -28,5 +28,25 @@ test('ignores duplicate and zero-length walls', () => {
 test('splits walls where an internal partition meets them', () => {
   const walls = [wall(0, 0, 160, 0), wall(160, 0, 160, 120), wall(160, 120, 0, 120), wall(0, 120, 0, 0), wall(80, 0, 80, 120)];
   assert.deepEqual(findRooms(walls).map(room => room.area).sort((left, right) => left - right), [9600, 9600]);
+});
+
+test('places an opening on a wall and clamps it to its endpoints', () => {
+  const placed = placeOnWall(wall(0, 0, 160, 0), { x: 10, y: 4 }, 40, 6, 10);
+  assert.equal(placed.offset, 0.125);
+  assert.equal(placed.x, 0);
+  assert.equal(placed.y, -3);
+});
+
+test('rejects walls that are too far away or shorter than the opening', () => {
+  assert.equal(placeOnWall(wall(0, 0, 30, 0), { x: 15, y: 0 }, 40, 6), null);
+  assert.equal(findOpeningWall([wall(0, 0, 100, 0)], { x: 50, y: 30 }, 40, 6, 10), null);
+});
+
+test('updates a bound opening when its wall rotates', () => {
+  const opening = { w: 1, h: 0.15, offset: 0.5 };
+  assert.equal(updateOpening(opening, wall(0, 0, 0, 160), 40), true);
+  assert.equal(opening.angle, Math.PI / 2);
+  assert.equal(opening.x, -20);
+  assert.equal(opening.y, 77);
 });
 
