@@ -46,6 +46,7 @@
   function validItems(items) {
     return Array.isArray(items) && items.filter(item => item && item.type === 'background').length <= 1 && items.every(item => {
       if (!item || !itemTypes.has(item.type) || !Number.isFinite(item.x) || !Number.isFinite(item.y)) return false;
+      if (item.materialColor !== undefined && (typeof item.materialColor !== 'string' || !/^#[0-9a-f]{6}$/i.test(item.materialColor))) return false;
       if (item.type === 'background') return typeof item.src === 'string' && item.src.length <= 450000 && /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+={0,2}$/.test(item.src) && Number.isFinite(item.w) && item.w > 0 && Number.isFinite(item.h) && item.h > 0 && Number.isFinite(item.opacity) && item.opacity >= 0 && item.opacity <= 1 && typeof item.visible === 'boolean';
       if (item.type === 'room' || isLine(item.type)) {
         return Number.isFinite(item.x2) && Number.isFinite(item.y2) && (isLine(item.type) ? item.x !== item.x2 || item.y !== item.y2 : item.x !== item.x2 && item.y !== item.y2);
