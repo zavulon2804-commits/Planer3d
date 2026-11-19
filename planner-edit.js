@@ -6,6 +6,7 @@
   const labels = { room: 'Комната', wall: 'Стена', dimension: 'Размер', door: 'Дверь', window: 'Окно', sofa: 'Диван', table: 'Стол', bed: 'Кровать', bath: 'Ванна', socket: 'Розетка', light: 'Светильник', ...PlannerProject.lineNames };
   let selection = -1;
   let dragStart = null;
+  let dragEndpoint = null;
 
   function project() {
     return window.PlannerCore.getProject();
@@ -57,7 +58,7 @@
     const height = (box.bottom - box.top) / scale;
     const dimensionLabel = PlannerProject.isLine(item.type) ? 'Проекция по X, м' : 'Ширина, м';
     const heightLabel = PlannerProject.isLine(item.type) ? 'Проекция по Y, м' : 'Глубина, м';
-    panel.innerHTML = `<p><strong>${labels[item.type] || 'Объект'}</strong></p><label for="objectX">X, м</label><input id="objectX" type="number" step="0.1"><label for="objectY">Y, м</label><input id="objectY" type="number" step="0.1"><label for="objectWidth">${dimensionLabel}</label><input id="objectWidth" type="number" step="0.1" min="0"><label for="objectHeight">${heightLabel}</label><input id="objectHeight" type="number" step="0.1" min="0"><button class="wide primary" id="applyObject">Применить размеры</button><button class="wide" id="duplicateObject">Дублировать</button><p class="small">Для перемещения перетащите объект на плане.</p>`;
+    panel.innerHTML = `<p><strong>${labels[item.type] || 'Объект'}</strong></p><label for="objectX">X, м</label><input id="objectX" type="number" step="0.1"><label for="objectY">Y, м</label><input id="objectY" type="number" step="0.1"><label for="objectWidth">${dimensionLabel}</label><input id="objectWidth" type="number" step="0.1" min="0"><label for="objectHeight">${heightLabel}</label><input id="objectHeight" type="number" step="0.1" min="0"><button class="wide primary" id="applyObject">Применить размеры</button><button class="wide" id="duplicateObject">Дублировать</button><p class="small">${item.type === 'wall' ? 'Перетащите стену или маркер её конца. Общие концы соседних стен переместятся вместе.' : 'Для перемещения перетащите объект на плане.'}</p>`;
     const x = document.querySelector('#objectX'), y = document.querySelector('#objectY'), w = document.querySelector('#objectWidth'), h = document.querySelector('#objectHeight');
     x.value = (box.left / scale).toFixed(2); y.value = (box.top / scale).toFixed(2); w.value = width.toFixed(2); h.value = height.toFixed(2);
     if (item.wallId) {
@@ -88,16 +89,17 @@
         object.openingHeight = openingHeight;
         object.sillHeight = sillHeight;
       }
-      if (object.type === 'wall' && object.id) {
-        const newLength = Math.hypot(values[2], values[3]);
-        if (current.items.some(candidate => candidate.wallId === object.id && candidate.w > newLength)) { alert('Стена короче размещённого на ней проёма.'); return; }
-      }
       const reverseX = object.x2 != null && object.x2 < object.x;
       const reverseY = object.y2 != null && object.y2 < object.y;
-      object.x = (values[0] + (reverseX ? values[2] : 0)) * scale;
-      object.y = (values[1] + (reverseY ? values[3] : 0)) * scale;
-      if (object.x2 != null) { object.x2 = (values[0] + (reverseX ? 0 : values[2])) * scale; object.y2 = (values[1] + (reverseY ? 0 : values[3])) * scale; }
-      else { object.w = values[2]; object.h = values[3]; }
+      const first = { x: (values[0] + (reverseX ? values[2] : 0)) * scale, y: (values[1] + (reverseY ? values[3] : 0)) * scale };
+      const second = { x: (values[0] + (reverseX ? 0 : values[2])) * scale, y: (values[1] + (reverseY ? 0 : values[3])) * scale };
+      if (object.type === 'wall') {
+        if (!PlannerProject.setWallEndpoints(current.items, index, first, second, scale)) { alert('Изменение обнулит стену или сделает её короче размещённого проёма.'); return; }
+      } else {
+        object.x = first.x; object.y = first.y;
+        if (object.x2 != null) { object.x2 = second.x; object.y2 = second.y; }
+        else { object.w = values[2]; object.h = values[3]; }
+      }
       saveProject(current, index);
     };
     document.querySelector('#duplicateObject').onclick = () => {
@@ -127,6 +129,15 @@
       if (window.PlannerCore.isVisible(data.items[index]) && hit(data.items[index], position)) { selection = index; break; }
     }
     dragStart = selection >= 0 ? position : null;
+    dragEndpoint = null;
+    const item = data.items[selection];
+    if (item?.type === 'wall') {
+      const exact = window.PlannerCore.toWorldExact(event), threshold = 10 / window.PlannerCore.getZoom();
+      const firstDistance = Math.hypot(exact.x - item.x, exact.y - item.y);
+      const secondDistance = Math.hypot(exact.x - item.x2, exact.y - item.y2);
+      if (Math.min(firstDistance, secondDistance) <= threshold) dragEndpoint = firstDistance <= secondDistance ? 'first' : 'second';
+    }
+    if (selection >= 0) canvas.setPointerCapture(event.pointerId);
     if (selection >= 0) showProperties(selection);
   });
 
@@ -137,7 +148,11 @@
     if (!dx && !dy) return;
     const data = project(), item = data?.items[selection];
     if (!item) return;
-    if (item.wallId) {
+    if (item.type === 'wall') {
+      const first = { x: item.x + (dragEndpoint === 'second' ? 0 : dx), y: item.y + (dragEndpoint === 'second' ? 0 : dy) };
+      const second = { x: item.x2 + (dragEndpoint === 'first' ? 0 : dx), y: item.y2 + (dragEndpoint === 'first' ? 0 : dy) };
+      if (!PlannerProject.setWallEndpoints(data.items, selection, first, second, scale)) { document.querySelector('#status').textContent = 'Невозможно переместить стену: проверьте её длину и проёмы.'; return; }
+    } else if (item.wallId) {
       const wall = data.items.find(candidate => candidate.type === 'wall' && candidate.id === item.wallId);
       const placed = wall && PlannerGeometry.placeOnWall(wall, { x: item.x + item.w * scale / 2 + dx, y: item.y + item.h * scale / 2 + dy }, item.w * scale, item.h * scale);
       if (!placed) return;
