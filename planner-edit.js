@@ -1,7 +1,6 @@
 (() => {
   const canvas = document.querySelector('#canvas');
   const panel = document.querySelector('#selected');
-  const storageKey = 'personal-planner-v1';
   const scale = 40;
   const step = 20;
   const labels = { room: 'Комната', wall: 'Стена', door: 'Дверь', window: 'Окно', sofa: 'Диван', table: 'Стол', bed: 'Кровать', bath: 'Ванна', socket: 'Розетка', light: 'Светильник' };
@@ -9,7 +8,7 @@
   let dragStart = null;
 
   function project() {
-    try { return JSON.parse(localStorage.getItem(storageKey)); } catch { return null; }
+    return window.PlannerCore.getProject();
   }
 
   function point(event) {
@@ -38,9 +37,11 @@
     return document.querySelector('[data-tool="select"]').classList.contains('active') && document.querySelector('#view2').classList.contains('active');
   }
 
-  function saveAndReload(data) {
-    localStorage.setItem(storageKey, JSON.stringify(data));
-    location.reload();
+  function saveProject(data, index) {
+    window.PlannerCore.change(current => {
+      current.items = data.items;
+    }, index);
+    if (index >= 0) showProperties(index);
   }
 
   function showProperties(index) {
@@ -52,7 +53,7 @@
     const height = (box.bottom - box.top) / scale;
     const dimensionLabel = item.type === 'wall' ? 'Проекция по X, м' : 'Ширина, м';
     const heightLabel = item.type === 'wall' ? 'Проекция по Y, м' : 'Глубина, м';
-    panel.innerHTML = `<p><strong>${labels[item.type] || 'Объект'}</strong></p><label for="objectX">X, м</label><input id="objectX" type="number" step="0.1"><label for="objectY">Y, м</label><input id="objectY" type="number" step="0.1"><label for="objectWidth">${dimensionLabel}</label><input id="objectWidth" type="number" step="0.1" min="0"><label for="objectHeight">${heightLabel}</label><input id="objectHeight" type="number" step="0.1" min="0"><button class="wide primary" id="applyObject">Применить размеры</button><button class="wide" id="duplicateObject">Дублировать</button><p class="small">Для перемещения перетащите объект на плане. Изменения размеров и перемещение обновляют страницу.</p>`;
+    panel.innerHTML = `<p><strong>${labels[item.type] || 'Объект'}</strong></p><label for="objectX">X, м</label><input id="objectX" type="number" step="0.1"><label for="objectY">Y, м</label><input id="objectY" type="number" step="0.1"><label for="objectWidth">${dimensionLabel}</label><input id="objectWidth" type="number" step="0.1" min="0"><label for="objectHeight">${heightLabel}</label><input id="objectHeight" type="number" step="0.1" min="0"><button class="wide primary" id="applyObject">Применить размеры</button><button class="wide" id="duplicateObject">Дублировать</button><p class="small">Для перемещения перетащите объект на плане.</p>`;
     const x = document.querySelector('#objectX'), y = document.querySelector('#objectY'), w = document.querySelector('#objectWidth'), h = document.querySelector('#objectHeight');
     x.value = (box.left / scale).toFixed(2); y.value = (box.top / scale).toFixed(2); w.value = width.toFixed(2); h.value = height.toFixed(2);
     document.querySelector('#applyObject').onclick = () => {
@@ -66,13 +67,13 @@
       object.y = (values[1] + (reverseY ? values[3] : 0)) * scale;
       if (object.x2 != null) { object.x2 = (values[0] + (reverseX ? 0 : values[2])) * scale; object.y2 = (values[1] + (reverseY ? 0 : values[3])) * scale; }
       else { object.w = values[2]; object.h = values[3]; }
-      saveAndReload(current);
+      saveProject(current, index);
     };
     document.querySelector('#duplicateObject').onclick = () => {
       const current = project(), copy = { ...current.items[index] };
       copy.x += step; copy.y += step;
       if (copy.x2 != null) { copy.x2 += step; copy.y2 += step; }
-      current.items.push(copy); saveAndReload(current);
+      current.items.push(copy); selection = current.items.length - 1; saveProject(current, selection);
     };
   }
 
@@ -98,7 +99,7 @@
     if (!item) return;
     item.x += dx; item.y += dy;
     if (item.x2 != null) { item.x2 += dx; item.y2 += dy; }
-    saveAndReload(data);
+    saveProject(data, selection);
   });
 })();
 
