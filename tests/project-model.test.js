@@ -116,3 +116,9 @@ test('rejects a connected-wall change that cannot contain its opening', () => {
   assert.equal(JSON.stringify(items), original);
 });
 
+test('accepts safe colour values and rejects malformed material colours', () => {
+  const item = { type: 'wall', x: 0, y: 0, x2: 40, y2: 0, materialColor: '#aabbcc' };
+  assert.equal(model.valid({ title: 'Дом', items: [item] }), true);
+  assert.equal(model.valid({ title: 'Дом', items: [{ ...item, materialColor: 'url(example)' }] }), false);
+});
+
