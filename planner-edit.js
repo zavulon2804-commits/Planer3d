@@ -3,7 +3,7 @@
   const panel = document.querySelector('#selected');
   const scale = 40;
   const step = 20;
-  const labels = { room: 'Комната', wall: 'Стена', door: 'Дверь', window: 'Окно', sofa: 'Диван', table: 'Стол', bed: 'Кровать', bath: 'Ванна', socket: 'Розетка', light: 'Светильник', ...PlannerProject.lineNames };
+  const labels = { room: 'Комната', wall: 'Стена', dimension: 'Размер', door: 'Дверь', window: 'Окно', sofa: 'Диван', table: 'Стол', bed: 'Кровать', bath: 'Ванна', socket: 'Розетка', light: 'Светильник', ...PlannerProject.lineNames };
   let selection = -1;
   let dragStart = null;
 
