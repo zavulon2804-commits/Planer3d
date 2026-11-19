@@ -3,7 +3,7 @@
   const panel = document.querySelector('#selected');
   const scale = 40;
   const step = 20;
-  const labels = { room: 'Комната', wall: 'Стена', door: 'Дверь', window: 'Окно', sofa: 'Диван', table: 'Стол', bed: 'Кровать', bath: 'Ванна', socket: 'Розетка', light: 'Светильник' };
+  const labels = { room: 'Комната', wall: 'Стена', door: 'Дверь', window: 'Окно', sofa: 'Диван', table: 'Стол', bed: 'Кровать', bath: 'Ванна', socket: 'Розетка', light: 'Светильник', ...PlannerProject.lineNames };
   let selection = -1;
   let dragStart = null;
 
@@ -27,7 +27,7 @@
       const dx = position.x - centerX, dy = position.y - centerY, cos = Math.cos(item.angle || 0), sin = Math.sin(item.angle || 0);
       return Math.abs(dx * cos + dy * sin) <= item.w * scale / 2 + 8 && Math.abs(-dx * sin + dy * cos) <= item.h * scale / 2 + 8;
     }
-    if (item.type === 'wall') {
+    if (PlannerProject.isLine(item.type)) {
       const dx = item.x2 - item.x, dy = item.y2 - item.y;
       const lengthSquared = dx * dx + dy * dy;
       const t = lengthSquared ? Math.max(0, Math.min(1, ((position.x - item.x) * dx + (position.y - item.y) * dy) / lengthSquared)) : 0;
@@ -55,8 +55,8 @@
     const box = bounds(item);
     const width = (box.right - box.left) / scale;
     const height = (box.bottom - box.top) / scale;
-    const dimensionLabel = item.type === 'wall' ? 'Проекция по X, м' : 'Ширина, м';
-    const heightLabel = item.type === 'wall' ? 'Проекция по Y, м' : 'Глубина, м';
+    const dimensionLabel = PlannerProject.isLine(item.type) ? 'Проекция по X, м' : 'Ширина, м';
+    const heightLabel = PlannerProject.isLine(item.type) ? 'Проекция по Y, м' : 'Глубина, м';
     panel.innerHTML = `<p><strong>${labels[item.type] || 'Объект'}</strong></p><label for="objectX">X, м</label><input id="objectX" type="number" step="0.1"><label for="objectY">Y, м</label><input id="objectY" type="number" step="0.1"><label for="objectWidth">${dimensionLabel}</label><input id="objectWidth" type="number" step="0.1" min="0"><label for="objectHeight">${heightLabel}</label><input id="objectHeight" type="number" step="0.1" min="0"><button class="wide primary" id="applyObject">Применить размеры</button><button class="wide" id="duplicateObject">Дублировать</button><p class="small">Для перемещения перетащите объект на плане.</p>`;
     const x = document.querySelector('#objectX'), y = document.querySelector('#objectY'), w = document.querySelector('#objectWidth'), h = document.querySelector('#objectHeight');
     x.value = (box.left / scale).toFixed(2); y.value = (box.top / scale).toFixed(2); w.value = width.toFixed(2); h.value = height.toFixed(2);
@@ -75,7 +75,7 @@
     }
     document.querySelector('#applyObject').onclick = () => {
       const values = [x, y, w, h].map(input => Number(input.value));
-      if (values.some(value => !Number.isFinite(value)) || values[2] < 0 || values[3] < 0 || (values[2] === 0 && values[3] === 0) || (item.type !== 'wall' && (!values[2] || !values[3]))) { alert('Введите корректные размеры.'); return; }
+      if (values.some(value => !Number.isFinite(value)) || values[2] < 0 || values[3] < 0 || (values[2] === 0 && values[3] === 0) || (!PlannerProject.isLine(item.type) && (!values[2] || !values[3]))) { alert('Введите корректные размеры.'); return; }
       const current = project();
       const object = current.items[index];
       if (object.wallId) {
