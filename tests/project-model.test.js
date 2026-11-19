@@ -122,3 +122,11 @@ test('accepts safe colour values and rejects malformed material colours', () => 
   assert.equal(model.valid({ title: 'Дом', items: [{ ...item, materialColor: 'url(example)' }] }), false);
 });
 
+test('hit testing follows rotated furniture rather than its original box', () => {
+  const item = { type: 'table', x: 0, y: 0, w: 2, h: 1, rotation: 90 };
+  assert.equal(model.containsObject(item, { x: 40, y: -10 }, 40), true);
+  assert.equal(model.containsObject(item, { x: 5, y: 20 }, 40), false);
+  assert.equal(model.normalizeRotation(-90), 270);
+  assert.equal(model.normalizeRotation(450), 90);
+});
+
