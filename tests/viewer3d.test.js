@@ -22,3 +22,8 @@ test('represents engineering routes as floor-level geometry', () => {
   assert.equal(scene.filter(face => face.kind === 'line').length, 1);
 });
 
+test('does not render a background image as furniture', () => {
+  const scene = viewer.buildScene([{ type: 'background', x: 0, y: 0, w: 5, h: 4 }], 2.7, geometry);
+  assert.equal(scene.length, 0);
+});
+
