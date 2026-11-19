@@ -1,7 +1,8 @@
 (function (root) {
+  const catalog = root.PlannerCatalog || (typeof require === 'function' ? require('./catalog.js') : null);
   const lineNames = { pipeCold: 'Труба ХВС', pipeHot: 'Труба ГВС', drain: 'Канализация', cable: 'Электрокабель' };
   const lineColors = { pipeCold: '#2185c5', pipeHot: '#d64b43', drain: '#886744', cable: '#d5a000' };
-  const itemTypes = new Set(['room', 'wall', 'dimension', 'background', 'door', 'window', 'sofa', 'table', 'bed', 'bath', 'socket', 'light', ...Object.keys(lineNames)]);
+  const itemTypes = new Set(['room', 'wall', 'dimension', 'background', 'door', 'window', 'sofa', 'table', 'bed', 'bath', 'socket', 'light', ...Object.keys(lineNames), ...catalog.items.map(item => item.type)]);
   function isLine(type) { return type === 'wall' || type === 'dimension' || Object.hasOwn(lineNames, type); }
   function snap(value, centimetres, scale) {
     const step = centimetres * scale / 100;
