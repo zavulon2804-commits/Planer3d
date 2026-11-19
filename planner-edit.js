@@ -3,7 +3,7 @@
   const panel = document.querySelector('#selected');
   const scale = 40;
   const step = 20;
-  const labels = { room: 'Комната', wall: 'Стена', dimension: 'Размер', door: 'Дверь', window: 'Окно', sofa: 'Диван', table: 'Стол', bed: 'Кровать', bath: 'Ванна', socket: 'Розетка', light: 'Светильник', ...PlannerProject.lineNames };
+  const labels = { room: 'Комната', wall: 'Стена', dimension: 'Размер', door: 'Дверь', window: 'Окно', sofa: 'Диван', table: 'Стол', bed: 'Кровать', bath: 'Ванна', socket: 'Розетка', light: 'Светильник', ...PlannerProject.lineNames, ...Object.fromEntries(PlannerCatalog.items.map(item => [item.type, item.name])) };
   let selection = -1;
   let dragStart = null;
   let dragEndpoint = null;
@@ -61,7 +61,7 @@
     panel.innerHTML = `<p><strong>${labels[item.type] || 'Объект'}</strong></p><label for="objectX">X, м</label><input id="objectX" type="number" step="0.1"><label for="objectY">Y, м</label><input id="objectY" type="number" step="0.1"><label for="objectWidth">${dimensionLabel}</label><input id="objectWidth" type="number" step="0.1" min="0"><label for="objectHeight">${heightLabel}</label><input id="objectHeight" type="number" step="0.1" min="0"><button class="wide primary" id="applyObject">Применить размеры</button><button class="wide" id="duplicateObject">Дублировать</button><p class="small">${item.type === 'wall' ? 'Перетащите стену или маркер её конца. Общие концы соседних стен переместятся вместе.' : 'Для перемещения перетащите объект на плане.'}</p>`;
     const x = document.querySelector('#objectX'), y = document.querySelector('#objectY'), w = document.querySelector('#objectWidth'), h = document.querySelector('#objectHeight');
     x.value = (box.left / scale).toFixed(2); y.value = (box.top / scale).toFixed(2); w.value = width.toFixed(2); h.value = height.toFixed(2);
-    if (['wall', 'room', 'sofa', 'table', 'bed', 'bath', 'socket', 'light'].includes(item.type)) {
+    if (['wall', 'room', 'sofa', 'table', 'bed', 'bath', 'socket', 'light'].includes(item.type) || PlannerCatalog.get(item.type)) {
       const material = document.createElement('div');
       material.innerHTML = '<label for="materialColor">Цвет материала в 3D</label><input id="materialColor" type="color">';
       panel.insertBefore(material, document.querySelector('#applyObject'));
