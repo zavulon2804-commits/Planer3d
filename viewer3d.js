@@ -1,26 +1,34 @@
 (function (root) {
   const scale = 40;
   const heights = { sofa: 0.8, table: 0.75, bed: 0.55, bath: 0.6, socket: 0.25, light: 0.2, door: 2.1, window: 1.5 };
+  function color(value, fallback) { return typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value) ? value : fallback; }
+  function shade(value, factor) {
+    const channels = [1, 3, 5].map(offset => Math.max(0, Math.min(255, Math.round(parseInt(value.slice(offset, offset + 2), 16) * factor))));
+    return `#${channels.map(channel => channel.toString(16).padStart(2, '0')).join('')}`;
+  }
   function buildScene(items, wallHeight, geometry) {
     const faces = [];
-    const add = (points, color, kind) => faces.push({ points, color, kind });
-    const rooms = items.filter(item => item.type === 'room').map(item => ({ points: [{ x: item.x, y: item.y }, { x: item.x2, y: item.y }, { x: item.x2, y: item.y2 }, { x: item.x, y: item.y2 }] }));
+    const add = (points, color, kind, itemIndex = -1) => faces.push({ points, color, kind, itemIndex });
+    const rooms = items.flatMap((item, index) => item.type === 'room' ? [{ itemIndex: index, materialColor: item.materialColor, points: [{ x: item.x, y: item.y }, { x: item.x2, y: item.y }, { x: item.x2, y: item.y2 }, { x: item.x, y: item.y2 }] }] : []);
     if (!rooms.length) rooms.push(...geometry.findRooms(items));
-    for (const room of rooms) add(room.points.map(point => ({ x: point.x, y: point.y, z: 0 })), '#e1e7e1', 'floor');
-    for (const wall of items.filter(item => item.type === 'wall')) {
+    for (const room of rooms) add(room.points.map(point => ({ x: point.x, y: point.y, z: 0 })), color(room.materialColor, '#e1e7e1'), 'floor', room.itemIndex ?? -1);
+    for (const [index, wall] of items.entries()) {
+      if (wall.type !== 'wall') continue;
       const dx = wall.x2 - wall.x, dy = wall.y2 - wall.y, length = Math.hypot(dx, dy);
       if (!length) continue;
       const at = (distance, height) => ({ x: wall.x + dx * distance * scale / length, y: wall.y + dy * distance * scale / length, z: height * scale });
-      for (const panel of geometry.wallPanels(wall, items, wallHeight, scale)) add([at(panel.left, panel.bottom), at(panel.right, panel.bottom), at(panel.right, panel.top), at(panel.left, panel.top)], '#f9f7f1', 'wall');
+      for (const panel of geometry.wallPanels(wall, items, wallHeight, scale)) add([at(panel.left, panel.bottom), at(panel.right, panel.bottom), at(panel.right, panel.top), at(panel.left, panel.top)], color(wall.materialColor, '#f9f7f1'), 'wall', index);
     }
     const lineColors = { pipeCold: '#2185c5', pipeHot: '#d64b43', drain: '#886744', cable: '#d5a000' };
-    for (const item of items.filter(item => Object.hasOwn(lineColors, item.type))) {
+    for (const [index, item] of items.entries()) {
+      if (!Object.hasOwn(lineColors, item.type)) continue;
       const dx = item.x2 - item.x, dy = item.y2 - item.y, length = Math.hypot(dx, dy);
       if (!length) continue;
       const offsetX = -dy / length * 2, offsetY = dx / length * 2, z = 2;
-      add([{ x: item.x + offsetX, y: item.y + offsetY, z }, { x: item.x2 + offsetX, y: item.y2 + offsetY, z }, { x: item.x2 - offsetX, y: item.y2 - offsetY, z }, { x: item.x - offsetX, y: item.y - offsetY, z }], lineColors[item.type], 'line');
+      add([{ x: item.x + offsetX, y: item.y + offsetY, z }, { x: item.x2 + offsetX, y: item.y2 + offsetY, z }, { x: item.x2 - offsetX, y: item.y2 - offsetY, z }, { x: item.x - offsetX, y: item.y - offsetY, z }], lineColors[item.type], 'line', index);
     }
-    for (const item of items.filter(item => !['room', 'wall', 'background'].includes(item.type) && !item.wallId)) {
+    for (const [index, item] of items.entries()) {
+      if (['room', 'wall', 'background'].includes(item.type) || item.wallId) continue;
       const width = item.w * scale, depth = item.h * scale;
       if (!(width > 0 && depth > 0)) continue;
       const height = (heights[item.type] || 0.75) * scale;
@@ -28,19 +36,20 @@
       const x = item.x, y = item.y, z = bottom, top = bottom + height;
       const a = { x, y, z }, b = { x: x + width, y, z }, c = { x: x + width, y: y + depth, z }, d = { x, y: y + depth, z };
       const aTop = { ...a, z: top }, bTop = { ...b, z: top }, cTop = { ...c, z: top }, dTop = { ...d, z: top };
-      add([a, b, bTop, aTop], '#a8c5bd', 'object');
-      add([b, c, cTop, bTop], '#8fafa7', 'object');
-      add([c, d, dTop, cTop], '#a8c5bd', 'object');
-      add([d, a, aTop, dTop], '#8fafa7', 'object');
-      add([aTop, bTop, cTop, dTop], '#c4dcd4', 'object');
+      const base = color(item.materialColor, '#a8c5bd');
+      add([a, b, bTop, aTop], shade(base, 0.9), 'object', index);
+      add([b, c, cTop, bTop], shade(base, 0.75), 'object', index);
+      add([c, d, dTop, cTop], shade(base, 0.9), 'object', index);
+      add([d, a, aTop, dTop], shade(base, 0.75), 'object', index);
+      add([aTop, bTop, cTop, dTop], base, 'object', index);
     }
     return faces;
   }
-  function render(context, items, width, height, camera, wallHeight, geometry) {
+  function render(context, items, width, height, camera, wallHeight, geometry, selectedIndex = -1) {
     context.fillStyle = '#edf2f3'; context.fillRect(0, 0, width, height);
     const faces = buildScene(items, wallHeight, geometry);
     if (!faces.length) {
-      context.fillStyle = '#667780'; context.font = '16px Arial'; context.fillText('Добавьте стены или предметы на плане 2D', 30, 50); return;
+      context.fillStyle = '#667780'; context.font = '16px Arial'; context.fillText('Добавьте стены или предметы на плане 2D', 30, 50); return [];
     }
     const points = faces.flatMap(face => face.points);
     const minX = Math.min(...points.map(point => point.x)), maxX = Math.max(...points.map(point => point.x));
@@ -60,10 +69,24 @@
     }).sort((left, right) => left.depth - right.depth);
     for (const face of projected) {
       context.beginPath(); face.polygon.forEach((point, index) => index ? context.lineTo(point.x, point.y) : context.moveTo(point.x, point.y));
-      context.closePath(); context.fillStyle = face.color; context.strokeStyle = '#8d9b98'; context.lineWidth = 1; context.fill(); context.stroke();
+      context.closePath(); context.fillStyle = face.color; context.strokeStyle = face.itemIndex === selectedIndex && selectedIndex >= 0 ? '#008f80' : '#8d9b98'; context.lineWidth = face.itemIndex === selectedIndex && selectedIndex >= 0 ? 2 : 1; context.fill(); context.stroke();
     }
+    return projected;
   }
-  root.Planner3D = { buildScene, render };
+  function pick(faces, x, y) {
+    for (let index = faces.length - 1; index >= 0; index--) {
+      const face = faces[index];
+      if (!Number.isInteger(face.itemIndex) || face.itemIndex < 0) continue;
+      let inside = false;
+      for (let current = 0, previous = face.polygon.length - 1; current < face.polygon.length; previous = current++) {
+        const a = face.polygon[current], b = face.polygon[previous];
+        if ((a.y > y) !== (b.y > y) && x < (b.x - a.x) * (y - a.y) / (b.y - a.y) + a.x) inside = !inside;
+      }
+      if (inside) return face.itemIndex;
+    }
+    return -1;
+  }
+  root.Planner3D = { buildScene, render, pick };
   if (typeof module !== 'undefined') module.exports = root.Planner3D;
 })(typeof window !== 'undefined' ? window : globalThis);
 
