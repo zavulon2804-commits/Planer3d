@@ -34,6 +34,7 @@
       const t = lengthSquared ? Math.max(0, Math.min(1, ((position.x - item.x) * dx + (position.y - item.y) * dy) / lengthSquared)) : 0;
       return Math.hypot(position.x - item.x - t * dx, position.y - item.y - t * dy) <= 12;
     }
+    if (item.type !== 'room') return PlannerProject.containsObject(item, position, scale, 8);
     const box = bounds(item);
     return position.x >= box.left - 8 && position.x <= box.right + 8 && position.y >= box.top - 8 && position.y <= box.bottom + 8;
   }
@@ -67,6 +68,17 @@
       panel.insertBefore(material, document.querySelector('#applyObject'));
       document.querySelector('#materialColor').value = item.materialColor || (item.type === 'wall' ? '#f9f7f1' : item.type === 'room' ? '#e1e7e1' : '#a8c5bd');
     }
+    if (['sofa', 'table', 'bed', 'bath', 'socket', 'light'].includes(item.type) || PlannerCatalog.get(item.type)) {
+      const rotation = document.createElement('div');
+      rotation.innerHTML = '<label for="objectRotation">Поворот, °</label><input id="objectRotation" type="number" step="1"><button class="wide" id="rotateObject">Повернуть на 90°</button>';
+      panel.insertBefore(rotation, document.querySelector('#applyObject'));
+      document.querySelector('#objectRotation').value = item.rotation || 0;
+      document.querySelector('#rotateObject').onclick = () => {
+        const current = project();
+        current.items[index].rotation = PlannerProject.normalizeRotation((current.items[index].rotation || 0) + 90);
+        saveProject(current, index);
+      };
+    }
     if (item.wallId) {
       x.disabled = true; y.disabled = true;
       const vertical = PlannerGeometry.openingVertical(item);
@@ -87,6 +99,12 @@
       const object = current.items[index];
       const materialColor = document.querySelector('#materialColor');
       if (materialColor) object.materialColor = materialColor.value;
+      const rotationInput = document.querySelector('#objectRotation');
+      if (rotationInput) {
+        const rotation = Number(rotationInput.value);
+        if (!rotationInput.value || !Number.isFinite(rotation)) { alert('Введите корректный угол поворота.'); return; }
+        object.rotation = PlannerProject.normalizeRotation(rotation);
+      }
       if (object.wallId) {
         const openingHeightInput = document.querySelector('#openingHeight');
         const sillHeightInput = document.querySelector('#sillHeight');
