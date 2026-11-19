@@ -95,3 +95,24 @@ test('rejects coincident calibration points and invalid lengths', () => {
   assert.equal(model.calibrateBackground(background, point, { x: 20, y: 20 }, 0, 40), null);
 });
 
+test('moves shared wall endpoints without moving unrelated walls', () => {
+  const items = [{ type: 'wall', x: 0, y: 0, x2: 80, y2: 0 }, { type: 'wall', x: 80, y: 0, x2: 80, y2: 80 }, { type: 'wall', x: 200, y: 0, x2: 240, y2: 0 }];
+  assert.equal(model.setWallEndpoints(items, 0, { x: 0, y: 0 }, { x: 100, y: 20 }, 40), true);
+  assert.deepEqual([items[0].x2, items[0].y2, items[1].x, items[1].y], [100, 20, 100, 20]);
+  assert.equal(items[2].x, 200);
+});
+
+test('rejects collapsing a neighbouring wall without partial changes', () => {
+  const items = [{ type: 'wall', x: 0, y: 0, x2: 80, y2: 0 }, { type: 'wall', x: 80, y: 0, x2: 80, y2: 80 }];
+  const original = JSON.stringify(items);
+  assert.equal(model.setWallEndpoints(items, 0, { x: 0, y: 0 }, { x: 80, y: 80 }, 40), false);
+  assert.equal(JSON.stringify(items), original);
+});
+
+test('rejects a connected-wall change that cannot contain its opening', () => {
+  const items = [{ type: 'wall', x: 0, y: 0, x2: 80, y2: 0 }, { type: 'wall', id: 'adjacent', x: 80, y: 0, x2: 80, y2: 80 }, { type: 'door', wallId: 'adjacent', w: 1.5 }];
+  const original = JSON.stringify(items);
+  assert.equal(model.setWallEndpoints(items, 0, { x: 0, y: 0 }, { x: 80, y: 40 }, 40), false);
+  assert.equal(JSON.stringify(items), original);
+});
+
