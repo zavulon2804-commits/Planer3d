@@ -4,7 +4,7 @@
   const scale = 40;
   const sidebar = document.querySelector('.layout > aside:last-child');
   const container = document.createElement('section');
-  container.innerHTML = `<div class="divider"></div><h2>Предварительная смета</h2><label for="ceilingHeight">Высота стен, м</label><input id="ceilingHeight" type="number" min="0.1" max="20" step="0.1"><label for="floorRate">Пол, ₽/м²</label><input id="floorRate" type="number" min="0" step="100"><label for="wallRate">Стены, ₽/м²</label><input id="wallRate" type="number" min="0" step="100"><p class="small">Площадь стен рассчитывается по нарисованным стенам без вычета проёмов. Помещения и стены нужно рисовать отдельно.</p><div class="small">Площадь стен</div><div class="metric" id="wallArea">0 м²</div><div class="small">Ориентировочная стоимость</div><div class="metric" id="estimateTotal">0 ₽</div><button class="wide" id="estimateDownload">Скачать расчёт CSV</button><button class="wide" id="printPlan">Печать страницы</button>`;
+  container.innerHTML = `<div class="divider"></div><h2>Предварительная смета</h2><label for="ceilingHeight">Высота стен, м</label><input id="ceilingHeight" type="number" min="0.1" max="20" step="0.1"><label for="floorRate">Пол, ₽/м²</label><input id="floorRate" type="number" min="0" step="100"><label for="wallRate">Стены, ₽/м²</label><input id="wallRate" type="number" min="0" step="100"><p class="small">Площадь стен рассчитана без вычета проёмов. При наличии комнат, созданных вручную, площадь пола считается только по ним.</p><div class="small">Площадь стен</div><div class="metric" id="wallArea">0 м²</div><div class="small">Ориентировочная стоимость</div><div class="metric" id="estimateTotal">0 ₽</div><button class="wide" id="estimateDownload">Скачать расчёт CSV</button><button class="wide" id="printPlan">Печать страницы</button>`;
   sidebar.append(container);
   let settings = { ceilingHeight: 2.7, floorRate: 0, wallRate: 0 };
   try { settings = { ...settings, ...JSON.parse(localStorage.getItem(settingsKey) || '{}') }; } catch {}
@@ -18,6 +18,9 @@
     for (const item of project.items || []) {
       if (item.type === 'room' && Number.isFinite(item.x2) && Number.isFinite(item.y2)) floorArea += Math.abs((item.x2 - item.x) * (item.y2 - item.y)) / scale ** 2;
       if (item.type === 'wall' && Number.isFinite(item.x2) && Number.isFinite(item.y2)) wallLength += Math.hypot(item.x2 - item.x, item.y2 - item.y) / scale;
+    }
+    if (!(project.items || []).some(item => item.type === 'room')) {
+      floorArea = PlannerGeometry.findRooms(project.items || []).reduce((sum, room) => sum + room.area / scale ** 2, 0);
     }
     const wallArea = wallLength * settings.ceilingHeight;
     return { floorArea, wallLength, wallArea, floorCost: floorArea * settings.floorRate, wallCost: wallArea * settings.wallRate };
