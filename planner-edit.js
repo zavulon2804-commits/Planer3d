@@ -22,6 +22,11 @@
   }
 
   function hit(item, position) {
+    if (item.wallId && ['door', 'window'].includes(item.type)) {
+      const centerX = item.x + item.w * scale / 2, centerY = item.y + item.h * scale / 2;
+      const dx = position.x - centerX, dy = position.y - centerY, cos = Math.cos(item.angle || 0), sin = Math.sin(item.angle || 0);
+      return Math.abs(dx * cos + dy * sin) <= item.w * scale / 2 + 8 && Math.abs(-dx * sin + dy * cos) <= item.h * scale / 2 + 8;
+    }
     if (item.type === 'wall') {
       const dx = item.x2 - item.x, dy = item.y2 - item.y;
       const lengthSquared = dx * dx + dy * dy;
@@ -55,11 +60,26 @@
     panel.innerHTML = `<p><strong>${labels[item.type] || 'Объект'}</strong></p><label for="objectX">X, м</label><input id="objectX" type="number" step="0.1"><label for="objectY">Y, м</label><input id="objectY" type="number" step="0.1"><label for="objectWidth">${dimensionLabel}</label><input id="objectWidth" type="number" step="0.1" min="0"><label for="objectHeight">${heightLabel}</label><input id="objectHeight" type="number" step="0.1" min="0"><button class="wide primary" id="applyObject">Применить размеры</button><button class="wide" id="duplicateObject">Дублировать</button><p class="small">Для перемещения перетащите объект на плане.</p>`;
     const x = document.querySelector('#objectX'), y = document.querySelector('#objectY'), w = document.querySelector('#objectWidth'), h = document.querySelector('#objectHeight');
     x.value = (box.left / scale).toFixed(2); y.value = (box.top / scale).toFixed(2); w.value = width.toFixed(2); h.value = height.toFixed(2);
+    if (item.wallId) {
+      x.disabled = true; y.disabled = true;
+      const note = document.createElement('p');
+      note.className = 'small';
+      note.textContent = 'Проём привязан к стене. Перетащите его вдоль стены.';
+      panel.append(note);
+    }
     document.querySelector('#applyObject').onclick = () => {
       const values = [x, y, w, h].map(input => Number(input.value));
       if (values.some(value => !Number.isFinite(value)) || values[2] < 0 || values[3] < 0 || (values[2] === 0 && values[3] === 0) || (item.type !== 'wall' && (!values[2] || !values[3]))) { alert('Введите корректные размеры.'); return; }
       const current = project();
       const object = current.items[index];
+      if (object.wallId) {
+        const wall = current.items.find(candidate => candidate.type === 'wall' && candidate.id === object.wallId);
+        if (!wall || Math.hypot(wall.x2 - wall.x, wall.y2 - wall.y) < values[2] * scale) { alert('Ширина проёма превышает длину стены.'); return; }
+      }
+      if (object.type === 'wall' && object.id) {
+        const newLength = Math.hypot(values[2], values[3]);
+        if (current.items.some(candidate => candidate.wallId === object.id && candidate.w > newLength)) { alert('Стена короче размещённого на ней проёма.'); return; }
+      }
       const reverseX = object.x2 != null && object.x2 < object.x;
       const reverseY = object.y2 != null && object.y2 < object.y;
       object.x = (values[0] + (reverseX ? values[2] : 0)) * scale;
@@ -70,8 +90,17 @@
     };
     document.querySelector('#duplicateObject').onclick = () => {
       const current = project(), copy = { ...current.items[index] };
-      copy.x += step; copy.y += step;
-      if (copy.x2 != null) { copy.x2 += step; copy.y2 += step; }
+      if (copy.wallId) {
+        const wall = current.items.find(candidate => candidate.type === 'wall' && candidate.id === copy.wallId);
+        const position = { x: copy.x + copy.w * scale / 2 + step * Math.cos(copy.angle), y: copy.y + copy.h * scale / 2 + step * Math.sin(copy.angle) };
+        const placed = wall && PlannerGeometry.placeOnWall(wall, position, copy.w * scale, copy.h * scale);
+        if (!placed) return;
+        Object.assign(copy, placed);
+      } else {
+        delete copy.id;
+        copy.x += step; copy.y += step;
+        if (copy.x2 != null) { copy.x2 += step; copy.y2 += step; }
+      }
       current.items.push(copy); selection = current.items.length - 1; saveProject(current, selection);
     };
   }
@@ -96,8 +125,15 @@
     if (!dx && !dy) return;
     const data = project(), item = data?.items[selection];
     if (!item) return;
-    item.x += dx; item.y += dy;
-    if (item.x2 != null) { item.x2 += dx; item.y2 += dy; }
+    if (item.wallId) {
+      const wall = data.items.find(candidate => candidate.type === 'wall' && candidate.id === item.wallId);
+      const placed = wall && PlannerGeometry.placeOnWall(wall, { x: item.x + item.w * scale / 2 + dx, y: item.y + item.h * scale / 2 + dy }, item.w * scale, item.h * scale);
+      if (!placed) return;
+      Object.assign(item, placed);
+    } else {
+      item.x += dx; item.y += dy;
+      if (item.x2 != null) { item.x2 += dx; item.y2 += dy; }
+    }
     saveProject(data, selection);
   });
 })();
