@@ -51,3 +51,14 @@ test('sums engineering lengths by line type in metres', () => {
   assert.deepEqual(totals, { pipeCold: 6, pipeHot: 0, drain: 0, cable: 2 });
 });
 
+test('snaps coordinates to centimetre steps without accumulating floating point noise', () => {
+  assert.equal(model.snap(4.19, 5, 40), 4);
+  assert.equal(model.snap(4.21, 1, 40), 4.4);
+  assert.equal(model.snap(-11, 10, 40), -12);
+});
+
+test('validates dimensions as nonzero line annotations', () => {
+  assert.equal(model.valid({ title: 'Дом', items: [{ type: 'dimension', x: 0, y: 0, x2: 40, y2: 0 }] }), true);
+  assert.equal(model.valid({ title: 'Дом', items: [{ type: 'dimension', x: 0, y: 0, x2: 0, y2: 0 }] }), false);
+});
+
