@@ -27,3 +27,16 @@ test('does not render a background image as furniture', () => {
   assert.equal(scene.length, 0);
 });
 
+test('preserves item identity and selected material in scene faces', () => {
+  const items = [{ type: 'wall', x: 0, y: 0, x2: 80, y2: 0, materialColor: '#aabbcc' }, { type: 'table', x: 0, y: 0, w: 1, h: 1, materialColor: '#336699' }];
+  const faces = viewer.buildScene(items, 2.7, geometry);
+  assert.equal(faces.find(face => face.kind === 'wall').color, '#aabbcc');
+  assert.ok(faces.some(face => face.itemIndex === 1 && face.color === '#336699'));
+});
+
+test('selects the topmost visible face under the cursor', () => {
+  const polygon = [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }];
+  assert.equal(viewer.pick([{ polygon, itemIndex: 1 }, { polygon, itemIndex: 2 }], 5, 5), 2);
+  assert.equal(viewer.pick([{ polygon, itemIndex: 1 }], 20, 20), -1);
+});
+
