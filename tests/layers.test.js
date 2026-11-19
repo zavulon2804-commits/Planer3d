@@ -40,3 +40,8 @@ test('shows drawing dimensions and their tool on every sheet', () => {
   }
 });
 
+test('finds catalog tools ignoring case and surrounding spaces', () => {
+  assert.equal(layers.matches('  ХОЛОД ', 'Холодильник'), true);
+  assert.equal(layers.matches('раковина', 'Стул'), false);
+});
+
