@@ -62,3 +62,25 @@ test('validates dimensions as nonzero line annotations', () => {
   assert.equal(model.valid({ title: 'Дом', items: [{ type: 'dimension', x: 0, y: 0, x2: 0, y2: 0 }] }), false);
 });
 
+test('validates embedded raster backgrounds and rejects unsafe sources', () => {
+  const image = { type: 'background', x: 0, y: 0, w: 5, h: 4, opacity: 0.5, visible: true, src: 'data:image/png;base64,AAAA' };
+  assert.equal(model.valid({ title: 'Дом', items: [image] }), true);
+  assert.equal(model.valid({ title: 'Дом', items: [{ ...image, src: 'https://example.com/image.png' }] }), false);
+  assert.equal(model.valid({ title: 'Дом', items: [image, image] }), false);
+  assert.equal(model.valid({ title: 'Дом', items: [{ ...image, opacity: 2 }] }), false);
+});
+
+test('preserves a background in a copied variant and after export', () => {
+  const image = { type: 'background', x: 10, y: 20, w: 5, h: 4, opacity: 0.5, visible: true, src: 'data:image/png;base64,AAAA' };
+  const project = model.ensure({ title: 'Дом', items: [image] });
+  model.addVariant(project, 'Копия', true);
+  project.items[0].x = 50;
+  model.selectVariant(project, 0);
+  assert.equal(project.items[0].x, 10);
+  model.sync(project);
+  const restored = model.ensure(JSON.parse(JSON.stringify(project)));
+  model.selectVariant(restored, 1);
+  assert.equal(restored.items[0].x, 50);
+  assert.equal(restored.items[0].src, image.src);
+});
+
