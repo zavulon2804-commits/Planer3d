@@ -40,3 +40,13 @@ test('selects the topmost visible face under the cursor', () => {
   assert.equal(viewer.pick([{ polygon, itemIndex: 1 }], 20, 20), -1);
 });
 
+test('rotates object geometry around its centre in 3D', () => {
+  const faces = viewer.buildScene([{ type: 'table', x: 0, y: 0, w: 2, h: 1, rotation: 90 }], 2.7, geometry);
+  const xs = faces.flatMap(face => face.points.map(point => point.x));
+  const ys = faces.flatMap(face => face.points.map(point => point.y));
+  assert.ok(Math.abs(Math.min(...xs) - 20) < 1e-9);
+  assert.ok(Math.abs(Math.max(...xs) - 60) < 1e-9);
+  assert.ok(Math.abs(Math.min(...ys) + 20) < 1e-9);
+  assert.ok(Math.abs(Math.max(...ys) - 60) < 1e-9);
+});
+
