@@ -6,6 +6,9 @@
   const container = document.createElement('section');
   container.innerHTML = `<div class="divider"></div><h2>Предварительная смета</h2><label for="ceilingHeight">Высота стен, м</label><input id="ceilingHeight" type="number" min="0.1" max="20" step="0.1"><label for="floorRate">Пол, ₽/м²</label><input id="floorRate" type="number" min="0" step="100"><label for="wallRate">Стены, ₽/м²</label><input id="wallRate" type="number" min="0" step="100"><p class="small">Площадь одной стороны стен учитывает привязанные проёмы. При наличии комнат, созданных вручную, площадь пола считается только по ним.</p><div class="small">Площадь стен</div><div class="metric" id="wallArea">0 м²</div><div class="small">Ориентировочная стоимость</div><div class="metric" id="estimateTotal">0 ₽</div><button class="wide" id="estimateDownload">Скачать расчёт CSV</button><button class="wide" id="printPlan">Печать страницы</button>`;
   sidebar.append(container);
+  const engineering = document.createElement('section');
+  engineering.innerHTML = '<div class="divider"></div><h2>Длины линий</h2><div id="engineeringTotals"></div><p class="small">Длины геометрические; запас, соединения и подбор оборудования не учитываются.</p>';
+  sidebar.append(engineering);
   let settings = { ceilingHeight: 2.7, floorRate: 0, wallRate: 0 };
   try { settings = { ...settings, ...JSON.parse(localStorage.getItem(settingsKey) || '{}') }; } catch {}
   const fields = ['ceilingHeight', 'floorRate', 'wallRate'];
@@ -23,13 +26,19 @@
       floorArea = PlannerGeometry.findRooms(project.items || []).reduce((sum, room) => sum + room.area / scale ** 2, 0);
     }
     const wallArea = PlannerGeometry.wallSurface(project.items || [], settings.ceilingHeight, scale);
-    return { floorArea, wallLength, wallArea, floorCost: floorArea * settings.floorRate, wallCost: wallArea * settings.wallRate };
+    return { floorArea, wallLength, wallArea, floorCost: floorArea * settings.floorRate, wallCost: wallArea * settings.wallRate, engineering: PlannerProject.engineeringLengths(project.items || [], scale) };
   }
 
   function updateEstimate() {
     const result = calculate();
     document.querySelector('#wallArea').textContent = `${result.wallArea.toFixed(2)} м²`;
     document.querySelector('#estimateTotal').textContent = `${(result.floorCost + result.wallCost).toLocaleString('ru-RU', { maximumFractionDigits: 2 })} ₽`;
+    const list = document.querySelector('#engineeringTotals');
+    list.replaceChildren(...Object.entries(PlannerProject.lineNames).map(([type, label]) => {
+      const row = document.createElement('p');
+      row.textContent = `${label}: ${result.engineering[type].toFixed(2)} м`;
+      return row;
+    }));
   }
 
   for (const field of fields) document.getElementById(field).addEventListener('input', event => {
@@ -50,6 +59,7 @@
   document.querySelector('#estimateDownload').addEventListener('click', () => {
     const result = calculate();
     const rows = [['Позиция', 'Объём', 'Единица', 'Цена за единицу, ₽', 'Стоимость, ₽'], ['Пол', result.floorArea.toFixed(2), 'м²', settings.floorRate, result.floorCost.toFixed(2)], ['Стены с вычетом привязанных проёмов', result.wallArea.toFixed(2), 'м²', settings.wallRate, result.wallCost.toFixed(2)], ['Итого', '', '', '', (result.floorCost + result.wallCost).toFixed(2)]];
+    rows.splice(rows.length - 1, 0, ...Object.entries(PlannerProject.lineNames).map(([type, label]) => [label, result.engineering[type].toFixed(2), 'м', '', '']));
     const csv = '\ufeff' + rows.map(row => row.map(value => `"${String(value).replace(/"/g, '""')}"`).join(';')).join('\r\n');
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
     const link = document.createElement('a'); link.href = url; link.download = 'estimate.csv'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
