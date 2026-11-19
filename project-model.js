@@ -1,8 +1,13 @@
 (function (root) {
   const lineNames = { pipeCold: 'Труба ХВС', pipeHot: 'Труба ГВС', drain: 'Канализация', cable: 'Электрокабель' };
   const lineColors = { pipeCold: '#2185c5', pipeHot: '#d64b43', drain: '#886744', cable: '#d5a000' };
-  const itemTypes = new Set(['room', 'wall', 'door', 'window', 'sofa', 'table', 'bed', 'bath', 'socket', 'light', ...Object.keys(lineNames)]);
-  function isLine(type) { return type === 'wall' || Object.hasOwn(lineNames, type); }
+  const itemTypes = new Set(['room', 'wall', 'dimension', 'door', 'window', 'sofa', 'table', 'bed', 'bath', 'socket', 'light', ...Object.keys(lineNames)]);
+  function isLine(type) { return type === 'wall' || type === 'dimension' || Object.hasOwn(lineNames, type); }
+  function snap(value, centimetres, scale) {
+    const step = centimetres * scale / 100;
+    if (!Number.isFinite(value) || !Number.isFinite(step) || step <= 0) return value;
+    return Math.round(Math.round(value / step) * step * 1e6) / 1e6;
+  }
   function engineeringLengths(items, scale) {
     const totals = Object.fromEntries(Object.keys(lineNames).map(type => [type, 0]));
     for (const item of items) {
@@ -64,7 +69,7 @@
     floor.variants.push({ name, items: copyCurrent ? clone(project.items) : [] });
     selectVariant(project, floor.variants.length - 1);
   }
-  root.PlannerProject = { valid, ensure, sync, selectFloor, selectVariant, addFloor, addVariant, lineNames, lineColors, isLine, engineeringLengths };
+  root.PlannerProject = { valid, ensure, sync, selectFloor, selectVariant, addFloor, addVariant, lineNames, lineColors, isLine, engineeringLengths, snap };
   if (typeof module !== 'undefined') module.exports = root.PlannerProject;
 })(typeof window !== 'undefined' ? window : globalThis);
 
