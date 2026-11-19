@@ -20,7 +20,7 @@
       const offsetX = -dy / length * 2, offsetY = dx / length * 2, z = 2;
       add([{ x: item.x + offsetX, y: item.y + offsetY, z }, { x: item.x2 + offsetX, y: item.y2 + offsetY, z }, { x: item.x2 - offsetX, y: item.y2 - offsetY, z }, { x: item.x - offsetX, y: item.y - offsetY, z }], lineColors[item.type], 'line');
     }
-    for (const item of items.filter(item => !['room', 'wall'].includes(item.type) && !item.wallId)) {
+    for (const item of items.filter(item => !['room', 'wall', 'background'].includes(item.type) && !item.wallId)) {
       const width = item.w * scale, depth = item.h * scale;
       if (!(width > 0 && depth > 0)) continue;
       const height = (heights[item.type] || 0.75) * scale;
