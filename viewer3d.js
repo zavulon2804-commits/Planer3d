@@ -13,6 +13,13 @@
       const at = (distance, height) => ({ x: wall.x + dx * distance * scale / length, y: wall.y + dy * distance * scale / length, z: height * scale });
       for (const panel of geometry.wallPanels(wall, items, wallHeight, scale)) add([at(panel.left, panel.bottom), at(panel.right, panel.bottom), at(panel.right, panel.top), at(panel.left, panel.top)], '#f9f7f1', 'wall');
     }
+    const lineColors = { pipeCold: '#2185c5', pipeHot: '#d64b43', drain: '#886744', cable: '#d5a000' };
+    for (const item of items.filter(item => Object.hasOwn(lineColors, item.type))) {
+      const dx = item.x2 - item.x, dy = item.y2 - item.y, length = Math.hypot(dx, dy);
+      if (!length) continue;
+      const offsetX = -dy / length * 2, offsetY = dx / length * 2, z = 2;
+      add([{ x: item.x + offsetX, y: item.y + offsetY, z }, { x: item.x2 + offsetX, y: item.y2 + offsetY, z }, { x: item.x2 - offsetX, y: item.y2 - offsetY, z }, { x: item.x - offsetX, y: item.y - offsetY, z }], lineColors[item.type], 'line');
+    }
     for (const item of items.filter(item => !['room', 'wall'].includes(item.type) && !item.wallId)) {
       const width = item.w * scale, depth = item.h * scale;
       if (!(width > 0 && depth > 0)) continue;
