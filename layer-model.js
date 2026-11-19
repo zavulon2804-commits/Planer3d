@@ -9,7 +9,7 @@
     { id: 'lighting', name: 'Освещение', types: ['light'] },
     { id: 'wiring', name: 'Электропроводка', types: ['cable'] }
   ];
-  const baseTypes = new Set(['room', 'wall', 'door', 'window']);
+  const baseTypes = new Set(['room', 'wall', 'door', 'window', 'dimension']);
   function valid(id) { return sheets.some(sheet => sheet.id === id); }
   function visible(id, type) {
     const sheet = sheets.find(entry => entry.id === id);
@@ -17,7 +17,7 @@
   }
   function toolAvailable(id, type) {
     const sheet = sheets.find(entry => entry.id === id);
-    return type === 'select' || !!sheet && sheet.types.includes(type);
+    return !!sheet && (type === 'select' || type === 'dimension' || sheet.types.includes(type));
   }
   root.PlannerLayers = { sheets, valid, visible, toolAvailable };
   if (typeof module !== 'undefined') module.exports = root.PlannerLayers;
