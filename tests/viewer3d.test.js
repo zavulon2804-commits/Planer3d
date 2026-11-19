@@ -50,3 +50,21 @@ test('rotates object geometry around its centre in 3D', () => {
   assert.ok(Math.abs(Math.max(...ys) - 60) < 1e-9);
 });
 
+test('maps 3D screen movement to floor coordinates for camera orientation', () => {
+  const first = viewer.screenDelta(100, 40, { factor: 2, angle: 0, elevation: Math.PI / 6 });
+  assert.ok(Math.abs(first.x - 50) < 1e-9 && Math.abs(first.y - 40) < 1e-9);
+  const second = viewer.screenDelta(100, 40, { factor: 2, angle: Math.PI / 2, elevation: Math.PI / 6 });
+  assert.ok(Math.abs(second.x - 40) < 1e-9 && Math.abs(second.y + 50) < 1e-9);
+  assert.equal(viewer.screenDelta(100, 40, { factor: 0, angle: 0, elevation: 0 }), null);
+});
+
+test('keeps the projection frame fixed while an item is being dragged', () => {
+  const context = { fillRect() {}, fillText() {}, beginPath() {}, moveTo() {}, lineTo() {}, closePath() {}, fill() {}, stroke() {} };
+  const camera = { angle: 0.5, elevation: 0.7, zoom: 1 };
+  const original = viewer.render(context, [{ type: 'table', x: 0, y: 0, w: 2, h: 1 }], 800, 600, camera, 2.7, geometry);
+  const moved = viewer.render(context, [{ type: 'table', x: 2000, y: 1500, w: 2, h: 1 }], 800, 600, { ...camera, lockedFrame: original.frame }, 2.7, geometry);
+  assert.equal(moved.frame.centerX, original.frame.centerX);
+  assert.equal(moved.frame.centerY, original.frame.centerY);
+  assert.equal(moved.frame.factor, original.frame.factor);
+});
+
