@@ -35,7 +35,10 @@
       const height = (catalog.get(item.type)?.height || heights[item.type] || 0.75) * scale;
       const bottom = item.type === 'light' ? Math.max(0, wallHeight * scale - height) : 0;
       const x = item.x, y = item.y, z = bottom, top = bottom + height;
-      const a = { x, y, z }, b = { x: x + width, y, z }, c = { x: x + width, y: y + depth, z }, d = { x, y: y + depth, z };
+      const centerX = x + width / 2, centerY = y + depth / 2, angle = (item.rotation || 0) * Math.PI / 180;
+      const cos = Math.cos(angle), sin = Math.sin(angle);
+      const rotate = (px, py) => ({ x: centerX + (px - centerX) * cos - (py - centerY) * sin, y: centerY + (px - centerX) * sin + (py - centerY) * cos, z });
+      const a = rotate(x, y), b = rotate(x + width, y), c = rotate(x + width, y + depth), d = rotate(x, y + depth);
       const aTop = { ...a, z: top }, bTop = { ...b, z: top }, cTop = { ...c, z: top }, dTop = { ...d, z: top };
       const base = color(item.materialColor, '#a8c5bd');
       add([a, b, bTop, aTop], shade(base, 0.9), 'object', index);
