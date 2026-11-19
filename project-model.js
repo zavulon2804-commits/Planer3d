@@ -17,6 +17,24 @@
     if (Object.values(result).some(value => !Number.isFinite(value)) || result.w > 1000000 || result.h > 1000000) return null;
     return result;
   }
+  function setWallEndpoints(items, index, first, second, scale) {
+    const wall = items[index];
+    if (!wall || wall.type !== 'wall' || !first || !second || ![first.x, first.y, second.x, second.y, scale].every(Number.isFinite) || scale <= 0) return false;
+    const originalFirst = { x: wall.x, y: wall.y }, originalSecond = { x: wall.x2, y: wall.y2 };
+    const close = (left, right) => Math.hypot(left.x - right.x, left.y - right.y) < 1e-7;
+    const replace = point => close(point, originalFirst) ? first : close(point, originalSecond) ? second : point;
+    const changes = [];
+    for (const candidate of items) {
+      if (candidate.type !== 'wall') continue;
+      const start = replace({ x: candidate.x, y: candidate.y }), end = replace({ x: candidate.x2, y: candidate.y2 });
+      if (start.x === candidate.x && start.y === candidate.y && end.x === candidate.x2 && end.y === candidate.y2) continue;
+      const length = Math.hypot(end.x - start.x, end.y - start.y) / scale;
+      if (length < 1e-7 || candidate.id && items.some(opening => opening.wallId === candidate.id && opening.w > length + 1e-7)) return false;
+      changes.push({ candidate, start, end });
+    }
+    for (const change of changes) Object.assign(change.candidate, { x: change.start.x, y: change.start.y, x2: change.end.x, y2: change.end.y });
+    return true;
+  }
   function engineeringLengths(items, scale) {
     const totals = Object.fromEntries(Object.keys(lineNames).map(type => [type, 0]));
     for (const item of items) {
@@ -79,7 +97,7 @@
     floor.variants.push({ name, items: copyCurrent ? clone(project.items) : [] });
     selectVariant(project, floor.variants.length - 1);
   }
-  root.PlannerProject = { valid, ensure, sync, selectFloor, selectVariant, addFloor, addVariant, lineNames, lineColors, isLine, engineeringLengths, snap, calibrateBackground };
+  root.PlannerProject = { valid, ensure, sync, selectFloor, selectVariant, addFloor, addVariant, lineNames, lineColors, isLine, engineeringLengths, snap, calibrateBackground, setWallEndpoints };
   if (typeof module !== 'undefined') module.exports = root.PlannerProject;
 })(typeof window !== 'undefined' ? window : globalThis);
 
