@@ -109,7 +109,44 @@
     return true;
   }
 
-  root.PlannerGeometry = { findRooms, placeOnWall, findOpeningWall, updateOpening };
+  function openingVertical(opening) {
+    const defaultHeight = opening.type === 'window' ? 1.5 : 2.1;
+    const defaultSill = opening.type === 'window' ? 0.9 : 0;
+    return {
+      height: Number.isFinite(opening.openingHeight) && opening.openingHeight > 0 ? opening.openingHeight : defaultHeight,
+      sill: Number.isFinite(opening.sillHeight) && opening.sillHeight >= 0 ? opening.sillHeight : defaultSill
+    };
+  }
+
+  function wallPanels(wall, items, ceilingHeight, scale) {
+    const length = Math.hypot(wall.x2 - wall.x, wall.y2 - wall.y) / scale;
+    if (!Number.isFinite(length) || length <= 0 || !Number.isFinite(ceilingHeight) || ceilingHeight <= 0) return [];
+    const openings = [];
+    if (wall.id) for (const opening of items) {
+      if (opening.wallId !== wall.id || !['door', 'window'].includes(opening.type) || !Number.isFinite(opening.offset) || !Number.isFinite(opening.w) || opening.w <= 0) continue;
+      const vertical = openingVertical(opening);
+      const left = Math.max(0, opening.offset * length - opening.w / 2);
+      const right = Math.min(length, opening.offset * length + opening.w / 2);
+      const bottom = Math.max(0, vertical.sill);
+      const top = Math.min(ceilingHeight, vertical.sill + vertical.height);
+      if (left < right && bottom < top) openings.push({ left, right, bottom, top });
+    }
+    const xs = [...new Set([0, length, ...openings.flatMap(item => [item.left, item.right])])].sort((a, b) => a - b);
+    const zs = [...new Set([0, ceilingHeight, ...openings.flatMap(item => [item.bottom, item.top])])].sort((a, b) => a - b);
+    const panels = [];
+    for (let xi = 1; xi < xs.length; xi++) for (let zi = 1; zi < zs.length; zi++) {
+      const left = xs[xi - 1], right = xs[xi], bottom = zs[zi - 1], top = zs[zi];
+      const x = (left + right) / 2, z = (bottom + top) / 2;
+      if (!openings.some(item => x > item.left && x < item.right && z > item.bottom && z < item.top)) panels.push({ left, right, bottom, top });
+    }
+    return panels;
+  }
+
+  function wallSurface(items, ceilingHeight, scale) {
+    return items.filter(item => item.type === 'wall').reduce((sum, wall) => sum + wallPanels(wall, items, ceilingHeight, scale).reduce((area, panel) => area + (panel.right - panel.left) * (panel.top - panel.bottom), 0), 0);
+  }
+
+  root.PlannerGeometry = { findRooms, placeOnWall, findOpeningWall, updateOpening, openingVertical, wallPanels, wallSurface };
   if (typeof module !== 'undefined') module.exports = root.PlannerGeometry;
 })(typeof window !== 'undefined' ? window : globalThis);
 
