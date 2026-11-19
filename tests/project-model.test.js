@@ -38,3 +38,16 @@ test('rejects invalid selected floor and variant indices', () => {
   assert.throws(() => model.selectVariant(project, -1));
 });
 
+test('accepts engineering lines and rejects zero-length or incomplete lines', () => {
+  for (const type of Object.keys(model.lineNames)) {
+    assert.equal(model.valid({ title: 'Дом', items: [{ type, x: 0, y: 0, x2: 40, y2: 0 }] }), true);
+    assert.equal(model.valid({ title: 'Дом', items: [{ type, x: 0, y: 0, x2: 0, y2: 0 }] }), false);
+    assert.equal(model.valid({ title: 'Дом', items: [{ type, x: 0, y: 0 }] }), false);
+  }
+});
+
+test('sums engineering lengths by line type in metres', () => {
+  const totals = model.engineeringLengths([{ type: 'pipeCold', x: 0, y: 0, x2: 120, y2: 160 }, { type: 'pipeCold', x: 0, y: 0, x2: 40, y2: 0 }, { type: 'cable', x: 0, y: 0, x2: 80, y2: 0 }], 40);
+  assert.deepEqual(totals, { pipeCold: 6, pipeHot: 0, drain: 0, cable: 2 });
+});
+
