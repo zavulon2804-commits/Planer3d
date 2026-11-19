@@ -4,6 +4,7 @@
   const lineColors = { pipeCold: '#2185c5', pipeHot: '#d64b43', drain: '#886744', cable: '#d5a000' };
   const itemTypes = new Set(['room', 'wall', 'dimension', 'background', 'door', 'window', 'sofa', 'table', 'bed', 'bath', 'socket', 'light', ...Object.keys(lineNames), ...catalog.items.map(item => item.type)]);
   function isLine(type) { return type === 'wall' || type === 'dimension' || Object.hasOwn(lineNames, type); }
+  function isMovableObject(type) { return ['sofa', 'table', 'bed', 'bath', 'socket', 'light'].includes(type) || !!catalog.get(type); }
   function normalizeRotation(angle) { return ((angle % 360) + 360) % 360; }
   function containsObject(item, point, scale, tolerance = 0) {
     if (!item || !point || ![item.x, item.y, item.w, item.h, point.x, point.y, scale, tolerance].every(Number.isFinite) || item.w <= 0 || item.h <= 0 || scale <= 0) return false;
@@ -108,7 +109,7 @@
     floor.variants.push({ name, items: copyCurrent ? clone(project.items) : [] });
     selectVariant(project, floor.variants.length - 1);
   }
-  root.PlannerProject = { valid, ensure, sync, selectFloor, selectVariant, addFloor, addVariant, lineNames, lineColors, isLine, engineeringLengths, snap, calibrateBackground, setWallEndpoints, normalizeRotation, containsObject };
+  root.PlannerProject = { valid, ensure, sync, selectFloor, selectVariant, addFloor, addVariant, lineNames, lineColors, isLine, engineeringLengths, snap, calibrateBackground, setWallEndpoints, normalizeRotation, containsObject, isMovableObject };
   if (typeof module !== 'undefined') module.exports = root.PlannerProject;
 })(typeof window !== 'undefined' ? window : globalThis);
 
