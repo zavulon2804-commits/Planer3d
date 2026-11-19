@@ -58,9 +58,9 @@
     const points = faces.flatMap(face => face.points);
     const minX = Math.min(...points.map(point => point.x)), maxX = Math.max(...points.map(point => point.x));
     const minY = Math.min(...points.map(point => point.y)), maxY = Math.max(...points.map(point => point.y));
-    const centerX = (minX + maxX) / 2, centerY = (minY + maxY) / 2;
+    const centerX = camera.lockedFrame?.centerX ?? (minX + maxX) / 2, centerY = camera.lockedFrame?.centerY ?? (minY + maxY) / 2;
     const span = Math.max(maxX - minX, maxY - minY, wallHeight * scale, 80);
-    const factor = Math.min(width * 0.62 / span, height * 0.7 / span, 2) * camera.zoom;
+    const factor = camera.lockedFrame?.factor ?? Math.min(width * 0.62 / span, height * 0.7 / span, 2) * camera.zoom;
     const cos = Math.cos(camera.angle), sin = Math.sin(camera.angle), elevation = camera.elevation;
     function project(point) {
       const dx = point.x - centerX, dy = point.y - centerY;
@@ -71,6 +71,7 @@
       const polygon = face.points.map(project);
       return { ...face, polygon, depth: polygon.reduce((sum, point) => sum + point.depth, 0) / polygon.length };
     }).sort((left, right) => left.depth - right.depth);
+    projected.frame = { centerX, centerY, factor, angle: camera.angle, elevation: camera.elevation };
     for (const face of projected) {
       context.beginPath(); face.polygon.forEach((point, index) => index ? context.lineTo(point.x, point.y) : context.moveTo(point.x, point.y));
       context.closePath(); context.fillStyle = face.color; context.strokeStyle = face.itemIndex === selectedIndex && selectedIndex >= 0 ? '#008f80' : '#8d9b98'; context.lineWidth = face.itemIndex === selectedIndex && selectedIndex >= 0 ? 2 : 1; context.fill(); context.stroke();
@@ -90,7 +91,13 @@
     }
     return -1;
   }
-  root.Planner3D = { buildScene, render, pick };
+  function screenDelta(dx, dy, frame) {
+    if (!frame || ![dx, dy, frame.factor, frame.angle, frame.elevation].every(Number.isFinite) || frame.factor <= 0 || Math.abs(Math.sin(frame.elevation)) < 1e-6) return null;
+    const horizontal = dx / frame.factor, depth = dy / (frame.factor * Math.sin(frame.elevation));
+    const cos = Math.cos(frame.angle), sin = Math.sin(frame.angle);
+    return { x: horizontal * cos + depth * sin, y: -horizontal * sin + depth * cos };
+  }
+  root.Planner3D = { buildScene, render, pick, screenDelta };
   if (typeof module !== 'undefined') module.exports = root.Planner3D;
 })(typeof window !== 'undefined' ? window : globalThis);
 
