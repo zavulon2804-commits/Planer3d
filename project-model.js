@@ -8,6 +8,15 @@
     if (!Number.isFinite(value) || !Number.isFinite(step) || step <= 0) return value;
     return Math.round(Math.round(value / step) * step * 1e6) / 1e6;
   }
+  function calibrateBackground(background, first, second, metres, scale) {
+    if (!background || !first || !second || ![background.x, background.y, background.w, background.h, first.x, first.y, second.x, second.y, metres, scale].every(Number.isFinite) || metres <= 0 || scale <= 0 || background.w <= 0 || background.h <= 0) return null;
+    const distance = Math.hypot(second.x - first.x, second.y - first.y);
+    if (distance < 0.1) return null;
+    const factor = metres * scale / distance;
+    const result = { x: first.x + (background.x - first.x) * factor, y: first.y + (background.y - first.y) * factor, w: background.w * factor, h: background.h * factor };
+    if (Object.values(result).some(value => !Number.isFinite(value)) || result.w > 1000000 || result.h > 1000000) return null;
+    return result;
+  }
   function engineeringLengths(items, scale) {
     const totals = Object.fromEntries(Object.keys(lineNames).map(type => [type, 0]));
     for (const item of items) {
@@ -70,7 +79,7 @@
     floor.variants.push({ name, items: copyCurrent ? clone(project.items) : [] });
     selectVariant(project, floor.variants.length - 1);
   }
-  root.PlannerProject = { valid, ensure, sync, selectFloor, selectVariant, addFloor, addVariant, lineNames, lineColors, isLine, engineeringLengths, snap };
+  root.PlannerProject = { valid, ensure, sync, selectFloor, selectVariant, addFloor, addVariant, lineNames, lineColors, isLine, engineeringLengths, snap, calibrateBackground };
   if (typeof module !== 'undefined') module.exports = root.PlannerProject;
 })(typeof window !== 'undefined' ? window : globalThis);
 
