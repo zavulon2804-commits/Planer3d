@@ -84,3 +84,14 @@ test('preserves a background in a copied variant and after export', () => {
   assert.equal(restored.items[0].src, image.src);
 });
 
+test('calibrates background proportionally while keeping the first point anchored', () => {
+  const result = model.calibrateBackground({ x: 0, y: 0, w: 5, h: 4 }, { x: 40, y: 40 }, { x: 120, y: 40 }, 4, 40);
+  assert.deepEqual(result, { x: -40, y: -40, w: 10, h: 8 });
+});
+
+test('rejects coincident calibration points and invalid lengths', () => {
+  const background = { x: 0, y: 0, w: 5, h: 4 }, point = { x: 10, y: 20 };
+  assert.equal(model.calibrateBackground(background, point, point, 1, 40), null);
+  assert.equal(model.calibrateBackground(background, point, { x: 20, y: 20 }, 0, 40), null);
+});
+
