@@ -1,11 +1,21 @@
 (function (root) {
-  const itemTypes = new Set(['room', 'wall', 'door', 'window', 'sofa', 'table', 'bed', 'bath', 'socket', 'light']);
+  const lineNames = { pipeCold: 'Труба ХВС', pipeHot: 'Труба ГВС', drain: 'Канализация', cable: 'Электрокабель' };
+  const lineColors = { pipeCold: '#2185c5', pipeHot: '#d64b43', drain: '#886744', cable: '#d5a000' };
+  const itemTypes = new Set(['room', 'wall', 'door', 'window', 'sofa', 'table', 'bed', 'bath', 'socket', 'light', ...Object.keys(lineNames)]);
+  function isLine(type) { return type === 'wall' || Object.hasOwn(lineNames, type); }
+  function engineeringLengths(items, scale) {
+    const totals = Object.fromEntries(Object.keys(lineNames).map(type => [type, 0]));
+    for (const item of items) {
+      if (Object.hasOwn(totals, item.type) && [item.x, item.y, item.x2, item.y2].every(Number.isFinite)) totals[item.type] += Math.hypot(item.x2 - item.x, item.y2 - item.y) / scale;
+    }
+    return totals;
+  }
   const clone = value => JSON.parse(JSON.stringify(value));
   function validItems(items) {
     return Array.isArray(items) && items.every(item => {
       if (!item || !itemTypes.has(item.type) || !Number.isFinite(item.x) || !Number.isFinite(item.y)) return false;
-      if (item.type === 'room' || item.type === 'wall') {
-        return Number.isFinite(item.x2) && Number.isFinite(item.y2) && (item.type === 'wall' ? item.x !== item.x2 || item.y !== item.y2 : item.x !== item.x2 && item.y !== item.y2);
+      if (item.type === 'room' || isLine(item.type)) {
+        return Number.isFinite(item.x2) && Number.isFinite(item.y2) && (isLine(item.type) ? item.x !== item.x2 || item.y !== item.y2 : item.x !== item.x2 && item.y !== item.y2);
       }
       return Number.isFinite(item.w) && item.w > 0 && Number.isFinite(item.h) && item.h > 0;
     });
@@ -54,7 +64,7 @@
     floor.variants.push({ name, items: copyCurrent ? clone(project.items) : [] });
     selectVariant(project, floor.variants.length - 1);
   }
-  root.PlannerProject = { valid, ensure, sync, selectFloor, selectVariant, addFloor, addVariant };
+  root.PlannerProject = { valid, ensure, sync, selectFloor, selectVariant, addFloor, addVariant, lineNames, lineColors, isLine, engineeringLengths };
   if (typeof module !== 'undefined') module.exports = root.PlannerProject;
 })(typeof window !== 'undefined' ? window : globalThis);
 
