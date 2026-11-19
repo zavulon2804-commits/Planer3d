@@ -130,3 +130,10 @@ test('hit testing follows rotated furniture rather than its original box', () =>
   assert.equal(model.normalizeRotation(450), 90);
 });
 
+test('only furniture and equipment can be moved using the 3D object tool', () => {
+  assert.equal(model.isMovableObject('sofa'), true);
+  assert.equal(model.isMovableObject('toilet'), true);
+  assert.equal(model.isMovableObject('wall'), false);
+  assert.equal(model.isMovableObject('door'), false);
+});
+
