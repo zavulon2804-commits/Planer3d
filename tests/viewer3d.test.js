@@ -17,3 +17,8 @@ test('uses wall panels around a door rather than a solid wall', () => {
   assert.ok(Math.abs(wallArea - 8.8) < 1e-9);
 });
 
+test('represents engineering routes as floor-level geometry', () => {
+  const scene = viewer.buildScene([{ type: 'pipeCold', x: 0, y: 0, x2: 100, y2: 0 }], 2.7, geometry);
+  assert.equal(scene.filter(face => face.kind === 'line').length, 1);
+});
+
