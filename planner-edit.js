@@ -124,7 +124,7 @@
     const position = point(event);
     selection = -1;
     for (let index = data.items.length - 1; index >= 0; index--) {
-      if (hit(data.items[index], position)) { selection = index; break; }
+      if (window.PlannerCore.isVisible(data.items[index]) && hit(data.items[index], position)) { selection = index; break; }
     }
     dragStart = selection >= 0 ? position : null;
     if (selection >= 0) showProperties(selection);
